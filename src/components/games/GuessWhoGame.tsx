@@ -22,14 +22,10 @@ function Face({ character }: { character: Character }) {
   );
 }
 
-type Question = { id: string; asker: string; text: string; yes?: boolean; answered: boolean };
-type Guess = { id: string; asker: string; target: string; characterId: number; correct?: boolean; answered: boolean };
-type GameState = { secrets: Record<string, number>; questions: Record<string, Question[]>; guesses: Guess[] };
-
 export function GuessWhoGame({ players, me, gameState, onChooseSecret, onAskQuestion, onAnswerQuestion, onGuess, onAnswerGuess }: {
   players: string[];
   me: string;
-  gameState: GameState;
+  gameState: import("@/lib/lobby-store").GuessWhoState;
   onChooseSecret: (characterId: number) => void;
   onAskQuestion: (target: string, questionId: string, text: string) => void;
   onAnswerQuestion: (questionId: string, yes: boolean) => void;
