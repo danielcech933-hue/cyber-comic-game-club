@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { GAMES, GAME_LIST, type GameId } from "@/lib/games/catalog";
+import { GAMES, type GameId } from "@/lib/games/catalog";
 import { checkCustomCode, createRoom, joinRoom, setNick, quickPlay, type LobbyState } from "@/lib/lobby-store";
 import { Bolt } from "./Bolt";
 
