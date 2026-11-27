@@ -7,6 +7,7 @@ export type GuessWhoQuestion = { id: string; asker: string; text: string; yes?: 
 export type GuessWhoGuess = { id: string; asker: string; target: string; characterId: number; correct?: boolean; answered: boolean };
 export type GuessWhoState = {
   secrets: Record<string, number>;
+  selectedPlayers: string[];
   questions: Record<string, GuessWhoQuestion[]>;
   guesses: GuessWhoGuess[];
 };
@@ -157,7 +158,7 @@ export function quickPlay(game: GameId): string {
 export function addBot(_code: string) { /* Bots are disabled in the clean lobby. */ }
 
 function emptyGuessWhoState() {
-  return { secrets: {} as Record<string, number>, questions: {} as Record<string, Array<{ id: string; asker: string; text: string; yes?: boolean; answered: boolean }>>, guesses: [] as Array<{ id: string; asker: string; target: string; characterId: number; correct?: boolean; answered: boolean }> };
+  return { secrets: {} as Record<string, number>, selectedPlayers: [] as string[], questions: {} as Record<string, Array<{ id: string; asker: string; text: string; yes?: boolean; answered: boolean }>>, guesses: [] as Array<{ id: string; asker: string; target: string; characterId: number; correct?: boolean; answered: boolean }> };
 }
 
 export function setGuessWhoSecret(code: string, player: string, characterId: number) {
