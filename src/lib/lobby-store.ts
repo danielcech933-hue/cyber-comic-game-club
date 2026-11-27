@@ -9,6 +9,7 @@ export type Room = {
   players: string[];
   host: string;
   status: "waiting" | "playing";
+  gameState?: { secrets: Record<string, number>; questions: Record<string, Array<{ text: string; yes: boolean }>>; guesses: Record<string, { player: string; characterId: number; correct: boolean }[]> };
 };
 export type ChatMsg = { id: string; author: string; avatar?: AvatarKey; text: string; color: "paper" | "pink" };
 export type AvatarKey = "clip" | "curly" | "wavy";
@@ -146,6 +147,56 @@ export function quickPlay(game: GameId): string {
 }
 
 export function addBot(_code: string) { /* Bots are disabled in the clean lobby. */ }
+
+export function setGuessWhoSecret(code: string, player: string, characterId: number) {
+  update((s) => ({
+    ...s,
+    rooms: s.rooms.map((r) => r.code === code ? {
+      ...r,
+      gameState: {
+        secrets: { ...(r.gameState?.secrets ?? {}), [player]: characterId },
+        questions: r.gameState?.questions ?? {},
+        guesses: r.gameState?.guesses ?? {},
+      },
+    } : r),
+  }));
+}
+
+export function addGuessWhoQuestion(code: string, targetPlayer: string, text: string, yes: boolean) {
+  update((s) => ({
+    ...s,
+    rooms: s.rooms.map((r) => r.code === code ? {
+      ...r,
+      gameState: {
+        secrets: r.gameState?.secrets ?? {},
+        questions: {
+          ...(r.gameState?.questions ?? {}),
+          [targetPlayer]: [...(r.gameState?.questions?.[targetPlayer] ?? []), { text, yes }],
+        },
+        guesses: r.gameState?.guesses ?? {},
+      },
+    } : r),
+  }));
+}
+
+export function addGuessWhoGuess(code: string, player: string, characterId: number) {
+  update((s) => ({
+    ...s,
+    rooms: s.rooms.map((r) => {
+      if (r.code !== code) return r;
+      const secret = r.gameState?.secrets?.[player];
+      const guess = { player, characterId, correct: secret === characterId };
+      return {
+        ...r,
+        gameState: {
+          secrets: r.gameState?.secrets ?? {},
+          questions: r.gameState?.questions ?? {},
+          guesses: { ...(r.gameState?.guesses ?? {}), [player]: [...(r.gameState?.guesses?.[player] ?? []), guess] },
+        },
+      };
+    }),
+  }));
+}
 
 export function setRoomStatus(code: string, status: Room["status"]) {
   update((s) => ({ ...s, rooms: s.rooms.map((r) => (r.code === code ? { ...r, status } : r)) }));
