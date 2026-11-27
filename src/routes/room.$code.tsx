@@ -195,7 +195,7 @@ function RoomPage() {
           gameState={gameState}
           onChooseSecret={(characterId)=>void act(()=>chooseOnlineSecret(code,session,characterId))}
           onAskQuestion={(target,questionId)=>void act(()=>askOnlineQuestion(code,session,target,questionId))}
-          onAnswerQuestion={(questionId,yes)=>void act(()=>answerOnlineQuestion(code,session,questionId,yes))}
+          onAnswerQuestion={(questionId)=>void act(()=>answerOnlineQuestion(code,session,questionId))}
           onGuess={(target,characterId)=>void act(()=>guessOnlineCharacter(code,session,target,characterId))}
           onAnswerGuess={(guessId)=>void act(()=>answerOnlineGuess(code,session,guessId))}
         />
