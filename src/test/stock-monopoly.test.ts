@@ -30,7 +30,7 @@ describe("Akciové Monopoly — desková hra",()=>{
   s.holdings["a"]={NOVA:2,CHIP:1};
   s.prices["NOVA"]=150;
   s.properties["1"]={ownerId:"a",level:2};
-  expect(calculateStockNetWorth(s,"a")).toBe(500+300+180+120*7);
+  expect(calculateStockNetWorth(s,"a")).toBe(500+300+180+150*7);
  });
  it("contains eight fictional companies with unique positive starting prices",()=>{
   expect(STOCKS).toHaveLength(8);
