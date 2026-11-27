@@ -1,4 +1,4 @@
-export type GameId = "sandbox";
+export type GameId = "guess-who";
 
 export const GAMES: Record<GameId, {
   id: GameId;
@@ -8,12 +8,12 @@ export const GAMES: Record<GameId, {
   minPlayers: number;
   maxPlayers: number;
 }> = {
-  sandbox: {
-    id: "sandbox",
-    title: "NOVÁ ARÉNA",
-    tag: "// GAME CLUB",
-    blurb: "Čistá místnost připravená pro nové hry. Herní obsah doplníme později.",
-    minPlayers: 1,
+  "guess-who": {
+    id: "guess-who",
+    title: "HÁDEJ KDO",
+    tag: "// GUESS WHO",
+    blurb: "Každý si vybere tajnou postavu. Ptej se, vyřazuj a uhodni postavy ostatních hráčů.",
+    minPlayers: 2,
     maxPlayers: 8,
   },
 };
