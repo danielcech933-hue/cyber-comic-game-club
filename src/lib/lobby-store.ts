@@ -164,7 +164,7 @@ export function setGuessWhoSecret(code: string, player: string, characterId: num
   update((s) => ({
     ...s,
     rooms: s.rooms.map((r) => {
-      if (r.code !== code || r.status !== "playing" || !r.players.includes(player)) return r;
+      if (r.code !== code || r.status !== "playing" || !r.players.includes(player) || !Number.isInteger(characterId) || characterId < 0 || characterId >= CHARACTERS.length) return r;
       const old = r.gameState ?? emptyGuessWhoState();
       return { ...r, gameState: { ...old, secrets: { ...old.secrets, [player]: characterId } } };
     }),
@@ -177,7 +177,7 @@ export function addGuessWhoQuestion(code: string, asker: string, target: string,
     rooms: s.rooms.map((r) => {
       if (r.code !== code || r.status !== "playing" || !r.players.includes(asker) || !r.players.includes(target) || asker === target) return r;
       const old = r.gameState ?? emptyGuessWhoState();
-      if (old.secrets[asker] === undefined || old.secrets[target] === undefined) return r;
+      if (old.secrets[asker] === undefined || old.secrets[target] === undefined || !Number.isInteger(characterId) || characterId < 0 || characterId >= CHARACTERS.length) return r;
       const prior = old.questions[target] ?? [];
       const askerQuestions = prior.filter((q) => q.asker === asker);
       if (askerQuestions.length >= 6 || askerQuestions.some((q) => q.id === questionId)) return r;
