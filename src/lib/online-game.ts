@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://ntzjirsejfvgvuhmbqvt.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_h6OPGkq8kd5c1wvqLlQ02g_VdQ9Vjw1";
+const SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50emppcnNlamZ2Z3Z1aG1icXZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1NTk1NDYsImV4cCI6MjEwMjEzNTU0Nn0.kcFxKvyxqYL0c7EcCnJ8SYhBDp-gdOeUgQ-toOK5sfI";
 const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/cyber-game`;
 const SESSION_PREFIX = "cyber-chmel-player:";
 const ROOM_KEY = "cyber-chmel-current-room";
@@ -21,7 +21,27 @@ export class OnlineGameError extends Error {
   code: string;
   status: number;
   constructor(code:string,status:number) {
-    super(code);
+    const messages:Record<string,string> = {
+      unauthorized:"Server odmítl přístup. Obnov stránku a zkus to znovu.",
+      invalid_player_session:"Tvoje relace už není platná. Připoj se znovu.",
+      player_session_missing:"Chybí relace hráče. Připoj se do místnosti znovu.",
+      room_not_found:"Místnost neexistuje nebo už vypršela.",
+      room_full:"Místnost je plná.",
+      room_already_started:"Hra už začala.",
+      nickname_taken:"Tuto přezdívku už v místnosti někdo používá.",
+      invalid_name:"Přezdívka musí mít 1 až 18 znaků.",
+      invalid_room_settings:"Neplatné nastavení místnosti.",
+      need_two_players:"Ke spuštění hry jsou potřeba alespoň dva hráči.",
+      host_only:"Hru může spustit pouze hostitel.",
+      player_not_ready:"Soupeř ještě nemá vybranou tajnou postavu.",
+      secret_not_selected:"Nejdřív si vyber tajnou postavu.",
+      secret_already_selected:"Tajnou postavu už máš vybranou.",
+      question_limit_or_duplicate:"Tuto otázku už jsi soupeři položil nebo jsi vyčerpal limit šesti otázek.",
+      invalid_character:"Vybraná postava není platná.",
+      unknown_question:"Tato otázka ve hře neexistuje.",
+      invalid_room_code:"Kód místnosti musí mít osm znaků.",
+    };
+    super(messages[code] ?? code);
     this.name="OnlineGameError";
     this.code=code;
     this.status=status;
@@ -55,7 +75,7 @@ export function getCurrentRoomCode() {
 async function callApi<T>(action:string,payload:Record<string,unknown> = {},session?:PlayerSession):Promise<T> {
   const headers:Record<string,string> = {
     "Content-Type":"application/json",
-    "apikey":SUPABASE_PUBLISHABLE_KEY,
+    "apikey":SUPABASE_API_KEY,
   };
   if(session) {
     headers["x-room-token"]=session.token;
@@ -95,10 +115,49 @@ export async function joinOnlineRoom(code:string,name:string):Promise<{room:Onli
   const {playerId:_playerId,token:_token,...room}=result;
   return {room,session};
 }
+function isRecord(value:unknown):value is Record<string,unknown> {
+  return value!==null && typeof value==="object" && !Array.isArray(value);
+}
+
+export function normalizeOnlineRoomResponse(payload:unknown):OnlineRoom {
+  if(!isRecord(payload)) throw new OnlineGameError("invalid_room_payload",502);
+  // Accept both the old nested shape and the canonical flat room response.
+  const room=isRecord(payload.room)?payload.room:payload;
+  const rawState=isRecord(payload.gameState)?payload.gameState:{};
+  const secrets=isRecord(rawState.secrets)
+    ? Object.fromEntries(Object.entries(rawState.secrets).filter((entry):entry is [string,number]=>typeof entry[1]==="number"))
+    : {};
+  const players=Array.isArray(room.players)?room.players:[];
+  if(typeof room.code!=="string" || !["waiting","playing"].includes(String(room.status)) || players.length===0) {
+    throw new OnlineGameError("invalid_room_payload",502);
+  }
+  return {
+    code:room.code,
+    game:"guess-who",
+    status:room.status as "waiting"|"playing",
+    max:typeof room.max==="number"?room.max:4,
+    players:players.filter(isRecord).map((player)=>({
+      id:String(player.id??""),
+      name:String(player.name??""),
+      isHost:player.isHost===true,
+      online:player.online===true,
+    })),
+    gameState:{
+      secrets,
+      selectedPlayers:Array.isArray(rawState.selectedPlayers)
+        ? rawState.selectedPlayers.filter((name):name is string=>typeof name==="string")
+        : Object.keys(secrets),
+      questions:isRecord(rawState.questions)?rawState.questions as OnlineGameState["questions"]:{},
+      guesses:Array.isArray(rawState.guesses)?rawState.guesses as OnlineGuess[]:[],
+    },
+  };
+}
+
 export async function getOnlineRoom(code:string,session?:PlayerSession):Promise<OnlineRoom> {
   const current=session ?? getPlayerSession(code);
   if(!current) throw new OnlineGameError("player_session_missing",401);
-  return callApi<OnlineRoom>("get",{code:code.toUpperCase()},current);
+  const payload=await callApi<unknown>("get",{code:code.toUpperCase()},current);
+  return normalizeOnlineRoomResponse(payload);
 }
 export async function startOnlineGame(code:string,session:PlayerSession) {
   return callApi("start",{code:code.toUpperCase()},session);
