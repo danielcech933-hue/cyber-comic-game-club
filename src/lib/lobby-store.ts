@@ -176,8 +176,9 @@ export function addGuessWhoQuestion(code: string, asker: string, target: string,
     rooms: s.rooms.map((r) => {
       if (r.code !== code || r.status !== "playing" || !r.players.includes(asker) || !r.players.includes(target) || asker === target) return r;
       const old = r.gameState ?? emptyGuessWhoState();
+      if (old.secrets[asker] === undefined || old.secrets[target] === undefined) return r;
       const prior = old.questions[target] ?? [];
-      if (prior.length >= 6 || prior.some((q) => q.id === questionId && q.asker === asker)) return r;
+      if (prior.filter((q) => q.asker === asker).length >= 6 || prior.some((q) => q.id === questionId && q.asker === asker)) return r;
       const question = { id: questionId, asker, text, answered: false };
       return { ...r, gameState: { ...old, questions: { ...old.questions, [target]: [...prior, question] } } };
     }),
@@ -203,7 +204,7 @@ export function addGuessWhoGuess(code: string, asker: string, target: string, ch
     rooms: s.rooms.map((r) => {
       if (r.code !== code || r.status !== "playing" || !r.players.includes(asker) || !r.players.includes(target) || asker === target) return r;
       const old = r.gameState ?? emptyGuessWhoState();
-      if (old.secrets[target] === undefined) return r;
+      if (old.secrets[asker] === undefined || old.secrets[target] === undefined) return r;
       const guess = { id: `g${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, asker, target, characterId, answered: false };
       return { ...r, gameState: { ...old, guesses: [...old.guesses, guess] } };
     }),
