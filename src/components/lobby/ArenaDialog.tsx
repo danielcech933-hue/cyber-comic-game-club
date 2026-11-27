@@ -8,13 +8,13 @@ import { Bolt } from "./Bolt";
 export type ArenaTab = "create" | "join" | "browse";
 
 export function ArenaDialog({
-  open, onOpenChange, lobby, initialTab = "create", initialGame = "az",
+  open, onOpenChange, lobby, initialTab = "create",
 }: {
-  open: boolean; onOpenChange: (o: boolean) => void; lobby: LobbyState; initialTab?: ArenaTab; initialGame?: GameId;
+  open: boolean; onOpenChange: (o: boolean) => void; lobby: LobbyState; initialTab?: ArenaTab;
 }) {
   const navigate = useNavigate();
   const [tab, setTab] = useState<ArenaTab>(initialTab);
-  const [game, setGame] = useState<GameId>(initialGame);
+  const game: GameId = "sandbox";
   const [max, setMax] = useState(2);
   const [code, setCode] = useState("");
   const [nick, setNickLocal] = useState("");
@@ -22,11 +22,11 @@ export function ArenaDialog({
 
   useEffect(() => {
     if (open) {
-      setTab(initialTab); setGame(initialGame); setMax(GAMES[initialGame].maxPlayers === 2 ? 2 : 4);
+      setTab(initialTab); setMax(8);
       setCode(""); setError(""); setNickLocal(lobby.nick);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialTab, initialGame]);
+  }, [open, initialTab]);
 
   const g = GAMES[game];
   const go = (c: string) => { onOpenChange(false); void navigate({ to: "/room/$code", params: { code: c } }); };
@@ -68,7 +68,7 @@ export function ArenaDialog({
         <DialogTitle className="font-display text-4xl tracking-wider">
           {tab === "browse" ? <>{g.title} <span className="text-neon">{g.tag}</span></> : <>ZALOŽIT <span className="text-neon">ARÉNU</span></>}
         </DialogTitle>
-        <DialogDescription className="text-sm text-paper/60">{tab === "browse" ? g.blurb : "Vytvoř vlastní místnost, nebo se připoj kódem od kámoše."}</DialogDescription>
+        <DialogDescription className="text-sm text-paper/60">{tab === "browse" ? "Přehled aktuálně otevřených místností." : "Vytvoř prázdnou místnost pro svoji partu a pošli jí pozvánku."}</DialogDescription>
 
         <div className="flex gap-2">{tabBtn("browse", "MÍSTNOSTI")}{tabBtn("create", "ZALOŽIT")}{tabBtn("join", "KÓD")}</div>
 
@@ -80,7 +80,7 @@ export function ArenaDialog({
           </label>
         )}
 
-        {tab !== "join" && (
+        {false && tab !== "join" && (
           <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Hra">
             {GAME_LIST.map((x) => (
               <button key={x.id} type="button" role="radio" aria-checked={game === x.id}
@@ -100,10 +100,10 @@ export function ArenaDialog({
             {openRooms.map((r) => {
               const full = r.players.length >= r.max;
               return (
-                <div key={r.code} className="flex items-center justify-between gap-3 border border-paper/15 bg-ink px-3 py-2">
+                <div key={r.code} className="grid gap-3 rounded-lg border border-paper/15 bg-ink p-3 sm:grid-cols-[1fr_auto] sm:items-center">
                   <div className="min-w-0">
                     <p className="font-display text-xl tracking-wider text-neon">#{r.code}</p>
-                    <p className="truncate text-xs text-paper/60">{r.players.join(", ")} · {r.players.length}/{r.max}</p>
+                    <p className="truncate text-sm text-paper/70">{r.players.join(", ")}</p><p className="mt-1 text-xs font-bold tracking-wider text-neon">{r.players.length} / {r.max} HRÁČŮ · {r.max-r.players.length} VOLNÁ MÍSTA</p>
                   </div>
                   <button type="button" disabled={full} onClick={() => submitJoin(r.code)}
                     className="cut-btn bg-neon px-4 py-1.5 font-display text-lg text-ink hover:bg-paper disabled:bg-paper/20 disabled:text-paper/50">
@@ -115,7 +115,7 @@ export function ArenaDialog({
             {error && <p className="text-sm font-semibold text-pink">{error}</p>}
             <button type="button" onClick={() => { onOpenChange(false); void navigate({ to: "/room/$code", params: { code: quickPlay(game) } }); }}
               className="cut-btn glow-neon mt-1 flex items-center justify-center gap-2 border-2 border-neon bg-neon/10 py-3 font-display text-3xl tracking-wider text-neon hover:bg-neon hover:text-ink">
-              <Bolt /> RYCHLÁ HRA — BAAAM!
+              <Bolt /> RYCHLÝ VSTUP
             </button>
           </div>
         )}
@@ -130,7 +130,7 @@ export function ArenaDialog({
                     className={`h-10 w-10 border-2 font-display text-xl ${max === n ? "border-pink bg-pink text-ink" : "border-paper/20 text-paper"}`}>{n}</button>
                 ))}
               </div>
-              {g.maxPlayers === 2 && <span className="text-[11px] font-semibold tracking-normal text-paper/50">Tahle hra je souboj jeden na jednoho.</span>}
+              {g.maxPlayers === 2 && <span className="text-[11px] font-semibold tracking-normal text-paper/50">Místnost může mít až 8 hráčů.</span>}
             </div>
             <label className="grid gap-1 text-xs font-bold tracking-[0.2em] text-neon">
               VLASTNÍ KÓD (NEPOVINNÉ)
@@ -139,7 +139,7 @@ export function ArenaDialog({
             </label>
             {error && <p className="text-sm font-semibold text-pink">{error}</p>}
             <button type="submit" className="cut-btn glow-neon flex items-center justify-center gap-2 border-2 border-neon bg-neon/10 py-3 font-display text-3xl tracking-wider text-neon hover:bg-neon hover:text-ink">
-              <Bolt /> ZALOŽIT ARÉNU
+              <Bolt /> VYTVOŘIT MÍSTNOST
             </button>
           </form>
         )}
