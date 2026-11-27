@@ -41,7 +41,7 @@ export function GuessWhoGame({ players, me, gameState, onChooseSecret, onAskQues
 
   const mySecretId = gameState.secrets[me];
   const mySecret = mySecretId === undefined ? undefined : CHARACTERS[mySecretId];
-  const allSelected = players.every((player) => gameState.secrets[player] !== undefined);
+  const allSelected = players.every((player) => gameState.selectedPlayers.includes(player));
   const myQuestionsForTarget = (gameState.questions[targetPlayer] ?? []).filter((question) => question.asker === me);
   const questionsLeft = MAX_QUESTIONS_PER_OPPONENT - myQuestionsForTarget.length;
   const targetQuestions = gameState.questions[me] ?? [];
