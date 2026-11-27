@@ -111,7 +111,7 @@ export function ensureNick(): string {
 }
 
 export function setNick(nick: string) {
-  update((s) => ({ ...s, nick: nick.trim().slice(0, 16) }));
+  update((s) => ({ ...s, nick: nick.trim().slice(0, 18) }));
 }
 
 export type CodeCheck = "ok" | "invalid" | "taken";
