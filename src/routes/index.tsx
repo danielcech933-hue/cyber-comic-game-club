@@ -4,7 +4,7 @@ import { LobbyHeader } from "@/components/lobby/LobbyHeader";
 import { LobbyChat } from "@/components/lobby/LobbyChat";
 import { ArenaDialog, type ArenaTab } from "@/components/lobby/ArenaDialog";
 import { Bolt } from "@/components/lobby/Bolt";
-import { useLobby } from "@/lib/lobby-store";
+import { useLobby, setNick } from "@/lib/lobby-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -60,6 +60,18 @@ function Lobby() {
         </section>
 
         <aside className="flex w-full flex-col gap-4 lg:w-80">
+          <section className="grid gap-2 border-2 border-neon/50 bg-noir p-3">
+            <label htmlFor="player-nickname" className="text-xs font-bold tracking-[0.2em] text-neon">TVOJE PŘEZDÍVKA</label>
+            <input
+              id="player-nickname"
+              value={lobby.nick}
+              onChange={(event) => setNick(event.target.value)}
+              maxLength={18}
+              placeholder="Např. Chmelák"
+              className="w-full border border-paper/20 bg-ink px-3 py-2.5 text-base font-semibold text-paper placeholder:text-paper/35 focus:border-neon focus:outline-none"
+            />
+            <p className="text-[11px] text-paper/50">Pod tímto jménem tě ostatní uvidí v herní místnosti.</p>
+          </section>
           <LobbyChat lobby={lobby} />
           <button type="button" onClick={() => setDlg({ open: true, tab: "create" })}
             className="cut-btn glow-neon flex h-20 shrink-0 items-center justify-center gap-3 border-2 border-neon bg-neon/10 font-display text-3xl tracking-wider text-neon transition-colors hover:bg-neon hover:text-ink">
