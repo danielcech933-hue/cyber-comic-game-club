@@ -47,6 +47,7 @@ export function GuessWhoGame({ players, me, gameState, onChooseSecret, onAskQues
   const targetQuestions = gameState.questions[me] ?? [];
   const pendingQuestions = targetQuestions.filter((question) => !question.answered);
   const pendingGuesses = gameState.guesses.filter((guess) => guess.target === me && !guess.answered);
+  const answeredGuesses = gameState.guesses.filter((guess) => guess.asker === me && guess.answered);
   const targetEliminated = new Set(eliminated[targetPlayer] ?? []);
 
   if (mySecretId === undefined) {
@@ -92,7 +93,7 @@ export function GuessWhoGame({ players, me, gameState, onChooseSecret, onAskQues
             </button>
           </div>
 
-          {!allSelected && <p className="mb-3 border border-pink/30 bg-pink/10 p-3 text-sm text-pink">Ještě vybírají: {players.filter((player) => gameState.secrets[player] === undefined).join(", ")}</p>}
+          {!allSelected && <p className="mb-3 border border-pink/30 bg-pink/10 p-3 text-sm text-pink">Ještě vybírají: {players.filter((player) => !gameState.selectedPlayers.includes(player)).join(", ")}</p>}
 
           <div className="mb-4 flex flex-wrap gap-2">
             {opponents.map((player) => (
@@ -183,10 +184,10 @@ export function GuessWhoGame({ players, me, gameState, onChooseSecret, onAskQues
         </div>
       </section>
       <section className="border border-paper/15 bg-noir p-4">
-        <h3 className="mb-2 font-display text-2xl">VÝSLEDKY TIPŮ</h3>
-        {gameState.guesses.filter((guess) => guess.answered).length === 0
+        <h3 className="mb-2 font-display text-2xl">VÝSLEDKY TVÝCH TIPŮ</h3>
+        {answeredGuesses.length === 0
           ? <p className="text-sm text-paper/50">Zatím žádné vyhodnocené tipy.</p>
-          : <div className="flex flex-wrap gap-2">{gameState.guesses.filter((guess) => guess.answered).map((guess) => (
+          : <div className="flex flex-wrap gap-2">{answeredGuesses.map((guess) => (
             <p key={guess.id} className={`rounded-lg border px-3 py-2 text-sm ${guess.correct ? "border-neon text-neon" : "border-pink text-pink"}`}>{guess.asker} → {guess.target}: {CHARACTERS[guess.characterId]?.name} · {guess.correct ? "SPRÁVNĚ" : "VEDLE"}</p>
           ))}</div>}
       </section>
