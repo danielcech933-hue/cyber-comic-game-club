@@ -35,7 +35,7 @@ export function seedState(): LobbyState {
   return {
     ready: false,
     nick: "",
-    wins: { sandbox: 0 },
+    wins: { "guess-who": 0 },
     rooms: [],
     chat: [],
   };
