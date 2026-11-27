@@ -24,20 +24,12 @@ const KEY = "cyberchmel-lobby-v1";
 export const BOT_NAMES: string[] = [];
 
 export function seedState(): LobbyState {
-  const r = (code: string, game: GameId, players: string[], max = GAMES[game].maxPlayers): Room => ({
-    code, game, max, players, host: players[0] ?? "", status: "waiting",
-  });
   return {
     ready: false,
     nick: "",
     wins: { sandbox: 0 },
     rooms: [],
-    chat: [
-      { id: "s1", author: "Hopka", avatar: "clip", color: "paper", text: "Neo-grid #3, kdo jde? Chybí mi soupeř." },
-      { id: "s2", author: "Laser Lída", avatar: "curly", color: "pink", text: "Beru! Připrav se na prohru 😈" },
-      { id: "s3", author: "Ječmen", avatar: "wavy", color: "paper", text: "Mask je dneska brutální, 4 kola bez tipu." },
-      { id: "s4", author: "__me__", color: "paper", text: "Šílená slova za 2 min, píšu se." },
-    ],
+    chat: [],
   };
 }
 
@@ -169,16 +161,6 @@ export function leaveRoom(code: string) {
   }));
 }
 
-
-/** Store the selected character for a player in a room. */
-export function setMaskSecret(code: string, player: string, characterId: number) {
-  update((s) => ({
-    ...s,
-    rooms: s.rooms.map((r) => r.code === code
-      ? { ...r, maskSecrets: { ...(r.maskSecrets ?? {}), [player]: characterId } }
-      : r),
-  }));
-}
 
 export function recordWin(game: GameId) {
   update((s) => ({ ...s, wins: { ...s.wins, [game]: (s.wins[game] ?? 0) + 1 } }));
