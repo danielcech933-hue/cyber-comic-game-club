@@ -79,8 +79,8 @@ async function callApi<T>(action:string,payload:Record<string,unknown> = {},sess
   };
   if(session) {
     headers["x-room-token"]=session.token;
-    payload.playerId=session.playerId;
-    payload.token=session.token;
+    payload["playerId"]=session.playerId;
+    payload["token"]=session.token;
   }
   const response=await fetch(FUNCTION_URL,{
     method:"POST",
@@ -122,33 +122,35 @@ function isRecord(value:unknown):value is Record<string,unknown> {
 export function normalizeOnlineRoomResponse(payload:unknown):OnlineRoom {
   if(!isRecord(payload)) throw new OnlineGameError("invalid_room_payload",502);
   // Accept both the old nested shape and the canonical flat room response.
-  const room=isRecord(payload.room)?payload.room:payload;
-  const rawState=isRecord(payload.gameState)?payload.gameState:{};
-  const secrets=isRecord(rawState.secrets)
-    ? Object.fromEntries(Object.entries(rawState.secrets).filter((entry):entry is [string,number]=>typeof entry[1]==="number"))
+  const room=isRecord(payload["room"])?payload["room"]:payload;
+  const rawState=isRecord(payload["gameState"])?payload["gameState"]:{};
+  const rawSecrets=rawState["secrets"];
+  const secrets=isRecord(rawSecrets)
+    ? Object.fromEntries(Object.entries(rawSecrets).filter((entry):entry is [string,number]=>typeof entry[1]==="number"))
     : {};
-  const players=Array.isArray(room.players)?room.players:[];
-  if(typeof room.code!=="string" || !["waiting","playing"].includes(String(room.status)) || players.length===0) {
+  const rawPlayers=room["players"];
+  const players=Array.isArray(rawPlayers)?rawPlayers:[];
+  if(typeof room["code"]!=="string" || !["waiting","playing"].includes(String(room["status"])) || players.length===0) {
     throw new OnlineGameError("invalid_room_payload",502);
   }
   return {
-    code:room.code,
+    code:room["code"],
     game:"guess-who",
-    status:room.status as "waiting"|"playing",
-    max:typeof room.max==="number"?room.max:4,
+    status:room["status"] as "waiting"|"playing",
+    max:typeof room["max"]==="number"?room["max"]:4,
     players:players.filter(isRecord).map((player)=>({
-      id:String(player.id??""),
-      name:String(player.name??""),
-      isHost:player.isHost===true,
-      online:player.online===true,
+      id:String(player["id"]??""),
+      name:String(player["name"]??""),
+      isHost:player["isHost"]===true,
+      online:player["online"]===true,
     })),
     gameState:{
       secrets,
-      selectedPlayers:Array.isArray(rawState.selectedPlayers)
-        ? rawState.selectedPlayers.filter((name):name is string=>typeof name==="string")
+      selectedPlayers:Array.isArray(rawState["selectedPlayers"])
+        ? rawState["selectedPlayers"].filter((name):name is string=>typeof name==="string")
         : Object.keys(secrets),
-      questions:isRecord(rawState.questions)?rawState.questions as OnlineGameState["questions"]:{},
-      guesses:Array.isArray(rawState.guesses)?rawState.guesses as OnlineGuess[]:[],
+      questions:isRecord(rawState["questions"])?rawState["questions"] as OnlineGameState["questions"]:{},
+      guesses:Array.isArray(rawState["guesses"])?rawState["guesses"] as OnlineGuess[]:[],
     },
   };
 }
