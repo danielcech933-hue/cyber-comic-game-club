@@ -1,0 +1,221 @@
+import { useEffect, useState } from "react";
+import type { GameId } from "./games/catalog";
+import { GAMES } from "./games/catalog";
+
+export type Room = {
+  code: string;
+  game: GameId;
+  max: number;
+  players: string[];
+  host: string;
+  status: "waiting" | "playing";
+};
+export type ChatMsg = { id: string; author: string; avatar?: AvatarKey; text: string; color: "paper" | "pink" };
+export type AvatarKey = "clip" | "curly" | "wavy";
+export type LobbyState = {
+  ready: boolean;
+  nick: string;
+  wins: Record<GameId, number>;
+  rooms: Room[];
+  chat: ChatMsg[];
+};
+
+const KEY = "cyberchmel-lobby-v1";
+export const BOT_NAMES = ["NeoKarel", "Hopka", "Bzučák", "Ječmen", "Laser Lída", "Pivoň", "Glitch Jirka", "Sladovna"];
+
+export function seedState(): LobbyState {
+  const r = (code: string, game: GameId, players: string[], max = GAMES[game].maxPlayers): Room => ({
+    code, game, max, players, host: players[0] ?? "", status: "waiting",
+  });
+  return {
+    ready: false,
+    nick: "",
+    wins: { az: 0, mask: 0, slova: 0 },
+    rooms: [
+      r("NEO3", "az", ["Hopka"]), r("PYR7", "az", ["Bzučák"]), r("HEX2", "az", ["Ječmen"]),
+      r("GRID", "az", ["Pivoň"]), r("AZ99", "az", ["Sladovna"]),
+      r("MASK", "mask", ["Laser Lída"]), r("KDO4", "mask", ["NeoKarel"]), r("TWIN", "mask", ["Glitch Jirka"]),
+      r("BUM1", "slova", ["Bzučák", "Hopka"], 5), r("TIK5", "slova", ["Ječmen"], 4),
+    ],
+    chat: [
+      { id: "s1", author: "Hopka", avatar: "clip", color: "paper", text: "Neo-grid #3, kdo jde? Chybí mi soupeř." },
+      { id: "s2", author: "Laser Lída", avatar: "curly", color: "pink", text: "Beru! Připrav se na prohru 😈" },
+      { id: "s3", author: "Ječmen", avatar: "wavy", color: "paper", text: "Mask je dneska brutální, 4 kola bez tipu." },
+      { id: "s4", author: "__me__", color: "paper", text: "Šílená slova za 2 min, píšu se." },
+    ],
+  };
+}
+
+let state: LobbyState | null = null;
+const listeners = new Set<() => void>();
+
+function load(): LobbyState {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) return { ...seedState(), ...(JSON.parse(raw) as Partial<LobbyState>), ready: true };
+  } catch {
+    /* ignore corrupt storage */
+  }
+  return { ...seedState(), ready: true };
+}
+
+function current(): LobbyState {
+  if (!state) state = load();
+  return state;
+}
+
+export function update(fn: (s: LobbyState) => LobbyState) {
+  state = fn(current());
+  try {
+    const { ready: _r, ...persist } = state;
+    localStorage.setItem(KEY, JSON.stringify(persist));
+  } catch {
+    /* storage full / private mode */
+  }
+  listeners.forEach((l) => l());
+}
+
+export function useLobby(): LobbyState {
+  const [s, setS] = useState<LobbyState>(seedState);
+  useEffect(() => {
+    setS(current());
+    const l = () => setS(current());
+    listeners.add(l);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === KEY) {
+        state = load();
+        listeners.forEach((x) => x());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      listeners.delete(l);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+  return s;
+}
+
+const ALPHA = "ABCDEFGHJKLMNPRSTUVWXYZ23456789";
+export function genCode(existing: string[]) {
+  for (;;) {
+    let c = "";
+    for (let i = 0; i < 4; i++) c += ALPHA[Math.floor(Math.random() * ALPHA.length)];
+    if (!existing.includes(c)) return c;
+  }
+}
+
+export function ensureNick(): string {
+  const s = current();
+  if (s.nick) return s.nick;
+  const nick = `Chmelák${Math.floor(100 + Math.random() * 900)}`;
+  update((x) => ({ ...x, nick }));
+  return nick;
+}
+
+export function setNick(nick: string) {
+  update((s) => ({ ...s, nick: nick.trim().slice(0, 16) }));
+}
+
+export type CodeCheck = "ok" | "invalid" | "taken";
+export function checkCustomCode(code: string): CodeCheck {
+  if (!/^[A-Z0-9]{4,6}$/.test(code)) return "invalid";
+  return current().rooms.some((r) => r.code === code) ? "taken" : "ok";
+}
+
+export function createRoom(game: GameId, max: number, customCode?: string): string {
+  const me = ensureNick();
+  const code = customCode || genCode(current().rooms.map((r) => r.code));
+  update((s) => ({
+    ...s,
+    rooms: [{ code, game, max, players: [me], host: me, status: "waiting" }, ...s.rooms],
+  }));
+  return code;
+}
+
+export type JoinResult = "ok" | "notfound" | "full" | "playing";
+export function joinRoom(code: string): JoinResult {
+  const me = ensureNick();
+  const room = current().rooms.find((r) => r.code === code.toUpperCase());
+  if (!room) return "notfound";
+  if (room.players.includes(me)) return "ok";
+  if (room.status === "playing") return "playing";
+  if (room.players.length >= room.max) return "full";
+  update((s) => ({
+    ...s,
+    rooms: s.rooms.map((r) => (r.code === room.code ? { ...r, players: [...r.players, me] } : r)),
+  }));
+  return "ok";
+}
+
+/** Joins the fullest open room of the game, or opens a new one. */
+export function quickPlay(game: GameId): string {
+  const me = ensureNick();
+  const open = current()
+    .rooms.filter((r) => r.game === game && r.status === "waiting" && r.players.length < r.max && !r.players.includes(me))
+    .sort((a, b) => b.players.length - a.players.length)[0];
+  if (open && joinRoom(open.code) === "ok") return open.code;
+  return createRoom(game, GAMES[game].maxPlayers);
+}
+
+export function addBot(code: string) {
+  update((s) => ({
+    ...s,
+    rooms: s.rooms.map((r) => {
+      if (r.code !== code || r.players.length >= r.max) return r;
+      const name = BOT_NAMES.find((n) => !r.players.includes(n)) ?? `Bot${r.players.length}`;
+      return { ...r, players: [...r.players, name] };
+    }),
+  }));
+}
+
+export function setRoomStatus(code: string, status: Room["status"]) {
+  update((s) => ({ ...s, rooms: s.rooms.map((r) => (r.code === code ? { ...r, status } : r)) }));
+}
+
+export function leaveRoom(code: string) {
+  const me = current().nick;
+  update((s) => ({
+    ...s,
+    rooms: s.rooms
+      .map((r) => (r.code === code ? { ...r, players: r.players.filter((p) => p !== me), status: "waiting" as const } : r))
+      .filter((r) => !(r.code === code && (r.players.length === 0 || r.host === me))),
+  }));
+}
+
+export function recordWin(game: GameId) {
+  update((s) => ({ ...s, wins: { ...s.wins, [game]: (s.wins[game] ?? 0) + 1 } }));
+}
+
+const BOT_REPLIES = [
+  "Jdu do toho, hoď kód!",
+  "Kdo zaváhá, nepíše! 💥",
+  "Neo-grid je můj revír.",
+  "Dneska trhám rekordy.",
+  "Mask? Uhodnu na první dobrou.",
+];
+export function sendChat(text: string) {
+  const me = ensureNick();
+  const t = text.trim().slice(0, 240);
+  if (!t) return;
+  update((s) => ({ ...s, chat: [...s.chat, { id: `m${Date.now()}`, author: me, color: "paper" as const, text: t }].slice(-60) }));
+  if (Math.random() < 0.6) {
+    setTimeout(() => {
+      const avatars: AvatarKey[] = ["clip", "curly", "wavy"];
+      const i = Math.floor(Math.random() * 3);
+      update((s) => ({
+        ...s,
+        chat: [
+          ...s.chat,
+          {
+            id: `b${Date.now()}`,
+            author: BOT_NAMES[i] ?? "Hopka",
+            avatar: avatars[i] ?? "clip",
+            color: i === 1 ? ("pink" as const) : ("paper" as const),
+            text: BOT_REPLIES[Math.floor(Math.random() * BOT_REPLIES.length)] ?? "👍",
+          },
+        ].slice(-60),
+      }));
+    }, 1500 + Math.random() * 2000);
+  }
+}
