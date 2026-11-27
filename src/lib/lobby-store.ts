@@ -194,7 +194,7 @@ export function answerGuessWhoQuestion(code: string, target: string, questionId:
       if (r.code !== code || r.status !== "playing" || !r.players.includes(target)) return r;
       const old = r.gameState ?? emptyGuessWhoState();
       const questions = old.questions[target] ?? [];
-      const item = questions.find((q) => q.id === questionId && !q.answered);
+      const item = questions.find((q) => q.id === questionId && !q.answered && q.asker !== target);
       if (!item || old.secrets[target] === undefined) return r;
       const character = old.secrets[target];
       const targetCharacter = CHARACTERS[character];
