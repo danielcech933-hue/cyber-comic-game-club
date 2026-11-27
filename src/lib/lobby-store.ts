@@ -183,6 +183,17 @@ export function leaveRoom(code: string) {
   }));
 }
 
+
+/** Store the selected character for a player in a room. */
+export function setMaskSecret(code: string, player: string, characterId: number) {
+  update((s) => ({
+    ...s,
+    rooms: s.rooms.map((r) => r.code === code
+      ? { ...r, maskSecrets: { ...(r.maskSecrets ?? {}), [player]: characterId } }
+      : r),
+  }));
+}
+
 export function recordWin(game: GameId) {
   update((s) => ({ ...s, wins: { ...s.wins, [game]: (s.wins[game] ?? 0) + 1 } }));
 }
