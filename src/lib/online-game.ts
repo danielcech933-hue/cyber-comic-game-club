@@ -168,8 +168,8 @@ export async function chooseOnlineSecret(code:string,session:PlayerSession,chara
 export async function askOnlineQuestion(code:string,session:PlayerSession,target:string,questionId:string) {
   return callApi("ask",{code:code.toUpperCase(),target,questionId},session);
 }
-export async function answerOnlineQuestion(code:string,session:PlayerSession,questionId:string,yes:boolean) {
-  return callApi("answer_question",{code:code.toUpperCase(),questionId,yes},session);
+export async function answerOnlineQuestion(code:string,session:PlayerSession,questionId:string) {
+  return callApi("answer_question",{code:code.toUpperCase(),questionId},session);
 }
 export async function guessOnlineCharacter(code:string,session:PlayerSession,target:string,characterId:number) {
   return callApi("guess",{code:code.toUpperCase(),target,characterId},session);
