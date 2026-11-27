@@ -34,53 +34,197 @@ type RoomState = {
 
 type GameId = "guess-who" | "stock-monopoly";
 type StockGameState = {
-  turnOrder:string[]; currentTurn:string; positions:Record<string,number>; cash:Record<string,number>;
-  holdings:Record<string,Record<string,number>>; prices:Record<string,number>; bankrupt:string[];
-  hasRolled:boolean; lastRoll:number|null; turn:number; maxTurns:number;
+  turnOrder:string[];
+  currentTurn:string;
+  positions:Record<string,number>;
+  cash:Record<string,number>;
+  holdings:Record<string,Record<string,number>>;
+  prices:Record<string,number>;
+  properties:Record<string,{ownerId:string;level:number}>;
+  bankrupt:string[];
+  jailed:string[];
+  jailTurns:Record<string,number>;
+  doublesCount:Record<string,number>;
+  hasRolled:boolean;
+  lastRoll:[number,number]|null;
+  turn:number;
+  maxTurns:number;
+  pendingPurchase:{tileIndex:number;ticker:string;price:number}|null;
+  pendingUpgrade:{tileIndex:number;ticker:string;price:number}|null;
   pendingOffer:{ticker:string;discount:number}|null;
-  log:Array<{id:string;turn:number;text:string}>; gameOver:boolean; winner:string|null;
+  marketOpen:boolean;
+  marketTradeUsed:boolean;
+  extraTurn:boolean;
+  lastLandedTile:number|null;
+  freeParkingPool:number;
+  log:Array<{id:string;turn:number;text:string}>;
+  gameOver:boolean;
+  winner:string|null;
 };
+type StockTile = {type:"start"|"company"|"news"|"tax"|"dividend"|"market"|"ipo"|"jail"|"parking"|"go_to_jail"|"bonus";ticker?:string};
 const STOCKS = [
-  {ticker:"NOVA",name:"Nova Dynamics",price:120},{ticker:"VOLT",name:"Volt Energy",price:95},
-  {ticker:"AERO",name:"AeroWorks",price:145},{ticker:"CHIP",name:"ChipForge",price:180},
-  {ticker:"ORBT",name:"Orbit Labs",price:110},{ticker:"GRIN",name:"GreenCore",price:85},
-  {ticker:"BYTE",name:"ByteBank",price:130},{ticker:"NEXO",name:"Nexo Mobility",price:105},
+  {ticker:"NOVA",name:"Nova Dynamics",price:120},
+  {ticker:"VOLT",name:"Volt Energy",price:95},
+  {ticker:"AERO",name:"AeroWorks",price:145},
+  {ticker:"CHIP",name:"ChipForge",price:180},
+  {ticker:"ORBT",name:"Orbit Labs",price:110},
+  {ticker:"GRIN",name:"GreenCore",price:85},
+  {ticker:"BYTE",name:"ByteBank",price:130},
+  {ticker:"NEXO",name:"Nexo Mobility",price:105},
 ] as const;
-const STOCK_TILES:Array<{type:"start"|"stock"|"news"|"tax"|"dividend"|"ipo"|"market";ticker?:string}> = [
-  {type:"start"},{type:"stock",ticker:"NOVA"},{type:"news"},{type:"stock",ticker:"VOLT"},{type:"tax"},
-  {type:"stock",ticker:"AERO"},{type:"dividend"},{type:"stock",ticker:"CHIP"},{type:"news"},{type:"stock",ticker:"ORBT"},
-  {type:"market"},{type:"stock",ticker:"GRIN"},{type:"tax"},{type:"stock",ticker:"BYTE"},{type:"ipo"},
-  {type:"stock",ticker:"NEXO"},{type:"news"},{type:"stock",ticker:"VOLT"},{type:"dividend"},{type:"stock",ticker:"NOVA"},
+const STOCK_TILES:StockTile[] = [
+  {type:"start"},{type:"company",ticker:"NOVA"},{type:"news"},{type:"company",ticker:"VOLT"},
+  {type:"tax"},{type:"company",ticker:"BYTE"},{type:"market"},{type:"company",ticker:"AERO"},
+  {type:"dividend"},{type:"company",ticker:"CHIP"},{type:"jail"},{type:"company",ticker:"ORBT"},
+  {type:"news"},{type:"company",ticker:"GRIN"},{type:"tax"},{type:"company",ticker:"NEXO"},
+  {type:"company",ticker:"NOVA"},{type:"ipo"},{type:"company",ticker:"VOLT"},{type:"company",ticker:"BYTE"},
+  {type:"parking"},{type:"company",ticker:"AERO"},{type:"news"},{type:"company",ticker:"CHIP"},
+  {type:"tax"},{type:"company",ticker:"ORBT"},{type:"market"},{type:"company",ticker:"GRIN"},
+  {type:"dividend"},{type:"company",ticker:"NEXO"},{type:"go_to_jail"},{type:"news"},
+  {type:"tax"},{type:"market"},{type:"dividend"},{type:"ipo"},{type:"news"},
+  {type:"tax"},{type:"market"},{type:"bonus"},
 ];
 function createStockGame(players:Array<{player_id:string}>):StockGameState {
-  const order=players.map(p=>p.player_id),cash:Record<string,number>={},positions:Record<string,number>={},holdings:Record<string,Record<string,number>>={};
-  for(const id of order){cash[id]=1500;positions[id]=0;holdings[id]={};}
-  return {turnOrder:order,currentTurn:order[0],positions,cash,holdings,prices:Object.fromEntries(STOCKS.map(s=>[s.ticker,s.price])),
-    bankrupt:[],hasRolled:false,lastRoll:null,turn:1,maxTurns:order.length*12,pendingOffer:null,
-    log:[{id:crypto.randomUUID(),turn:1,text:"Burza je otevřená. Každý investor dostává startovní kapitál 1 500 ₵."}],gameOver:false,winner:null};
+  const order=players.map(p=>p.player_id);
+  const cash:Record<string,number>={},positions:Record<string,number>={},holdings:Record<string,Record<string,number>>={};
+  const jailTurns:Record<string,number>={},doublesCount:Record<string,number>={};
+  for(const id of order){cash[id]=2500;positions[id]=0;holdings[id]={};jailTurns[id]=0;doublesCount[id]=0;}
+  return {
+    turnOrder:order,currentTurn:order[0],positions,cash,holdings,
+    prices:Object.fromEntries(STOCKS.map(s=>[s.ticker,s.price])),properties:{},
+    bankrupt:[],jailed:[],jailTurns,doublesCount,hasRolled:false,lastRoll:null,
+    turn:1,maxTurns:order.length*30,pendingPurchase:null,pendingUpgrade:null,pendingOffer:null,
+    marketOpen:false,marketTradeUsed:false,extraTurn:false,lastLandedTile:null,freeParkingPool:0,
+    log:[{id:crypto.randomUUID(),turn:1,text:"Burza se otevírá. Každý investor dostává 2 500 ₵. Hoď dvěma kostkami a kupuj podíly ve firmách."}],
+    gameOver:false,winner:null,
+  };
 }
-function addStockLog(s:StockGameState,text:string){s.log.unshift({id:crypto.randomUUID(),turn:s.turn,text});s.log=s.log.slice(0,16);}
-function activeStockPlayers(s:StockGameState){return s.turnOrder.filter(id=>!s.bankrupt.includes(id));}
-function stockNetWorth(s:StockGameState,id:string){return (s.cash[id]??0)+Object.entries(s.holdings[id]??{}).reduce((n,[t,q])=>n+(s.prices[t]??0)*q,0);}
-function finishStockGame(s:StockGameState){const active=activeStockPlayers(s);if(active.length<=1||s.turn>s.maxTurns){s.gameOver=true;s.winner=active.length?[...active].sort((a,b)=>stockNetWorth(s,b)-stockNetWorth(s,a))[0]:null;}}
-function bankruptStockPlayer(s:StockGameState,id:string){if(s.bankrupt.includes(id))return;s.bankrupt.push(id);s.holdings[id]={};addStockLog(s,"Investor opustil trh po vyčerpání kapitálu.");}
-function chargeStockPlayer(s:StockGameState,payer:string,to:string|null,amount:number,label:string){
-  const paid=Math.min(s.cash[payer]??0,amount);s.cash[payer]=(s.cash[payer]??0)-paid;if(to)s.cash[to]=(s.cash[to]??0)+paid;
-  if(paid<amount)bankruptStockPlayer(s,payer);addStockLog(s,label+(paid<amount?" — investor vyhlásil bankrot.":" — zaplaceno "+paid+" ₵."));
+function addStockLog(s:StockGameState,text:string){
+  s.log.unshift({id:crypto.randomUUID(),turn:s.turn,text});s.log=s.log.slice(0,24);
+}
+function stockActivePlayers(s:StockGameState){return s.turnOrder.filter(id=>!s.bankrupt.includes(id));}
+function stockPropertyMultiplier(s:StockGameState,ticker:string,ownerId:string){
+  const matching=STOCK_TILES.map((tile,index)=>tile.type==="company"&&tile.ticker===ticker?String(index):"")
+    .filter(Boolean);
+  return matching.length>1&&matching.every(index=>s.properties[index]?.ownerId===ownerId)?2:1;
+}
+function stockNetWorth(s:StockGameState,id:string){
+  const shares=Object.entries(s.holdings[id]??{}).reduce((sum,[ticker,qty])=>sum+(s.prices[ticker]??0)*qty,0);
+  const deeds=Object.entries(s.properties).filter(([,property])=>property.ownerId===id)
+    .reduce((sum,[index,property])=>{
+      const ticker=STOCK_TILES[Number(index)]?.ticker??"";
+      const price=s.prices[ticker]??0;
+      return sum+price*(5+Math.max(0,property.level-1)*2);
+    },0);
+  return (s.cash[id]??0)+shares+deeds;
+}
+function finishStockGame(s:StockGameState){
+  const active=stockActivePlayers(s);
+  if(active.length<=1||s.turn>s.maxTurns){
+    s.gameOver=true;
+    s.winner=active.length?[...active].sort((a,b)=>stockNetWorth(s,b)-stockNetWorth(s,a))[0]:null;
+    addStockLog(s,s.winner?"BURZA UZAVŘENA. Vítěz má nejvyšší čisté jmění.":"BURZA UZAVŘENA. Všichni investoři zkrachovali.");
+  }
+}
+function bankruptStockPlayer(s:StockGameState,id:string){
+  if(s.bankrupt.includes(id))return;
+  s.bankrupt.push(id);
+  for(const property of Object.values(s.properties))if(property.ownerId===id){property.ownerId="";property.level=0;}
+  s.holdings[id]={};
+  s.jailed=s.jailed.filter(playerId=>playerId!==id);
+  addStockLog(s,"Investor vyhlásil bankrot. Jeho firemní podíly se vrací na trh.");
+}
+function chargeStockPlayer(s:StockGameState,payer:string,recipient:string|null,amount:number,label:string){
+  const paid=Math.min(s.cash[payer]??0,amount);
+  s.cash[payer]=(s.cash[payer]??0)-paid;
+  if(recipient)s.cash[recipient]=(s.cash[recipient]??0)+paid;
+  if(paid<amount)bankruptStockPlayer(s,payer);
+  addStockLog(s,label+(paid<amount?" — nedostatek kapitálu, BANKROT.":" — zaplaceno "+paid+" ₵."));
 }
 function validTicker(t:string){return STOCKS.some(s=>s.ticker===t);}
-function driftStocks(s:StockGameState){for(const c of STOCKS)if(Math.random()<0.7){const pct=(Math.floor(Math.random()*5)+1)*(Math.random()<0.5?-1:1);s.prices[c.ticker]=Math.max(10,Math.min(500,Math.round((s.prices[c.ticker]??c.price)*(1+pct/100))));}}
-function resolveStockTile(s:StockGameState,id:string,pos:number){
-  const tile=STOCK_TILES[pos],company=STOCKS.find(c=>c.ticker===tile.ticker),name=company?.name??"trh";
-  if(tile.type==="stock"&&tile.ticker){
-    const holders=s.turnOrder.filter(p=>p!==id&&!s.bankrupt.includes(p)).map(p=>({id:p,qty:s.holdings[p]?.[tile.ticker!]??0})).filter(x=>x.qty>0).sort((a,b)=>b.qty-a.qty);
-    if(holders.length){const h=holders[0],fee=Math.max(10,Math.min(100,Math.round((s.prices[tile.ticker]??100)*0.05*h.qty)));chargeStockPlayer(s,id,h.id,fee,"Vstupní poplatek u "+name+" připadl největšímu akcionáři");}
-    else{s.pendingOffer={ticker:tile.ticker,discount:0};addStockLog(s,name+" je volná. Nakup akcie za "+s.prices[tile.ticker]+" ₵ / kus.");}
-  }else if(tile.type==="news"){const c=STOCKS[Math.floor(Math.random()*STOCKS.length)],pct=Math.floor(Math.random()*16)+7,up=Math.random()<0.5;s.prices[c.ticker]=Math.max(10,Math.round(s.prices[c.ticker]*(up?1+pct/100:1-pct/100)));addStockLog(s,"BURZOVNÍ ZPRÁVA: "+c.name+" "+(up?"roste":"padá")+" o "+pct+" %.");}
-  else if(tile.type==="tax")chargeStockPlayer(s,id,null,90,"Regulační poplatek burze");
-  else if(tile.type==="dividend"){const paid=Object.entries(s.holdings[id]??{}).reduce((n,[t,q])=>n+Math.floor((s.prices[t]??0)*q*0.035),0);s.cash[id]=(s.cash[id]??0)+paid;addStockLog(s,"DEN DIVIDEND: portfolio vydělalo "+paid+" ₵.");}
-  else if(tile.type==="ipo"){const c=STOCKS[Math.floor(Math.random()*STOCKS.length)];s.pendingOffer={ticker:c.ticker,discount:0.2};addStockLog(s,"IPO: "+c.ticker+" nabízí akcie se slevou 20 %.");}
-  else if(tile.type==="market"){const c=STOCKS[Math.floor(Math.random()*STOCKS.length)],pct=Math.floor(Math.random()*10)+5,up=Math.random()<0.5;s.prices[c.ticker]=Math.max(10,Math.round(s.prices[c.ticker]*(up?1+pct/100:1-pct/100)));addStockLog(s,"VOLATILITA TRHU: "+c.ticker+" "+(up?"posílil":"oslabil")+" o "+pct+" %.");}
+function stockMarketDrift(s:StockGameState){
+  for(const company of STOCKS)if(Math.random()<0.8){
+    const percent=(Math.floor(Math.random()*5)+1)*(Math.random()<0.5?-1:1);
+    s.prices[company.ticker]=Math.max(15,Math.min(600,Math.round((s.prices[company.ticker]??company.price)*(1+percent/100))));
+  }
+}
+function advanceStockTurn(s:StockGameState,fromPlayerId:string){
+  s.extraTurn=false;s.hasRolled=false;s.lastRoll=null;s.pendingPurchase=null;s.pendingUpgrade=null;
+  s.marketOpen=false;s.marketTradeUsed=false;s.pendingOffer=null;s.turn++;
+  stockMarketDrift(s);
+  if(s.turn<=s.maxTurns){
+    const index=s.turnOrder.indexOf(fromPlayerId);
+    for(let step=1;step<=s.turnOrder.length;step++){
+      const next=s.turnOrder[(index+step)%s.turnOrder.length];
+      if(!s.bankrupt.includes(next)){s.currentTurn=next;break;}
+    }
+    if(!s.bankrupt.includes(s.currentTurn))addStockLog(s,"NA TAHU: "+(s.turnOrder.indexOf(s.currentTurn)+1)+". investor.");
+  }
+  finishStockGame(s);
+}
+function moveStockPlayer(s:StockGameState,id:string,steps:number){
+  const old=s.positions[id]??0,total=old+steps,next=total%STOCK_TILES.length;
+  if(total>=STOCK_TILES.length){
+    s.cash[id]=(s.cash[id]??0)+200;
+    addStockLog(s,"PRŮCHOD PŘES START: +200 ₵.");
+  }
+  s.positions[id]=next;s.lastLandedTile=next;
+  return next;
+}
+function resolveStockTile(s:StockGameState,id:string,position:number){
+  const tile=STOCK_TILES[position];
+  if(tile.type==="start"){
+    s.cash[id]=(s.cash[id]??0)+200;addStockLog(s,"DOPAD NA START: získáváš dalších 200 ₵.");
+  }else if(tile.type==="company"&&tile.ticker){
+    const property=s.properties[String(position)];
+    const price=s.prices[tile.ticker]??100;
+    if(!property||!property.ownerId){
+      const purchasePrice=price*5;
+      s.pendingPurchase={tileIndex:position,ticker:tile.ticker,price:purchasePrice};
+      addStockLog(s,tile.ticker+" je na prodej. Můžeš koupit firemní podíl za "+purchasePrice+" ₵.");
+    }else if(property.ownerId===id){
+      if(property.level<3){
+        const upgradePrice=price*2;
+        s.pendingUpgrade={tileIndex:position,ticker:tile.ticker,price:upgradePrice};
+        addStockLog(s,"Jsi na své firmě "+tile.ticker+". Můžeš přikoupit podíl a zvýšit nájem.");
+      }else addStockLog(s,"Tato firma už má maximální investiční úroveň.");
+    }else{
+      const rent=Math.max(20,Math.round(price*0.45*property.level*stockPropertyMultiplier(s,tile.ticker,property.ownerId)));
+      chargeStockPlayer(s,id,property.ownerId,rent,"NÁJEM U "+tile.ticker+" zaplacen vlastníkovi");
+    }
+  }else if(tile.type==="tax"){
+    const tax=130;s.freeParkingPool+=tax;chargeStockPlayer(s,id,null,tax,"Regulační daň odvedena do společného banku");
+  }else if(tile.type==="news"){
+    const company=STOCKS[Math.floor(Math.random()*STOCKS.length)];
+    const percent=Math.floor(Math.random()*13)+8,up=Math.random()<0.5;
+    s.prices[company.ticker]=Math.max(15,Math.round(s.prices[company.ticker]*(up?1+percent/100:1-percent/100)));
+    addStockLog(s,"BURZOVNÍ ZPRÁVA: "+company.ticker+" "+(up?"posílil":"oslabil")+" o "+percent+" %.");
+  }else if(tile.type==="dividend"){
+    const ownedPropertyValue=Object.entries(s.properties).filter(([,p])=>p.ownerId===id).reduce((sum,[index,p])=>{
+      const ticker=STOCK_TILES[Number(index)]?.ticker??"";return sum+(s.prices[ticker]??0)*5*p.level;
+    },0);
+    const sharesValue=Object.entries(s.holdings[id]??{}).reduce((sum,[ticker,qty])=>sum+(s.prices[ticker]??0)*qty,0);
+    const payout=Math.floor((ownedPropertyValue+sharesValue)*0.05);
+    s.cash[id]=(s.cash[id]??0)+payout;
+    addStockLog(s,"DIVIDENDY: tvoje portfolio vyplatilo "+payout+" ₵.");
+  }else if(tile.type==="market"){
+    s.marketOpen=true;
+    addStockLog(s,"BURZA: terminál otevřen. Můžeš nakoupit nebo prodat volně obchodované akcie.");
+  }else if(tile.type==="ipo"){
+    const company=STOCKS[Math.floor(Math.random()*STOCKS.length)];
+    s.marketOpen=true;s.pendingOffer={ticker:company.ticker,discount:0.2};
+    addStockLog(s,"IPO: "+company.ticker+" nabízí akcie se slevou 20 %.");
+  }else if(tile.type==="parking"){
+    const reward=s.freeParkingPool;s.freeParkingPool=0;s.cash[id]=(s.cash[id]??0)+reward;
+    addStockLog(s,"VOLNÉ PARKOVÁNÍ: vybíráš společný bank "+reward+" ₵.");
+  }else if(tile.type==="go_to_jail"){
+    s.positions[id]=10;s.jailed.push(id);s.jailTurns[id]=0;s.doublesCount[id]=0;
+    s.extraTurn=false;addStockLog(s,"INSPEKCE BURZY: jdeš do vězení. Zkus hodit dvojici nebo zaplať kauci 100 ₵.");
+  }else if(tile.type==="jail"){
+    addStockLog(s,"NÁVŠTĚVA VĚZENÍ: nic se neděje.");
+  }else if(tile.type==="bonus"){
+    s.cash[id]=(s.cash[id]??0)+100;addStockLog(s,"TRŽNÍ BONUS: +100 ₵.");
+  }
 }
 
 const CHARACTERS = [
@@ -329,44 +473,124 @@ Deno.serve(async(req)=>{
         if(!mine)return response({error:"not_your_turn"},409);
         if(s.hasRolled)return response({error:"turn_already_rolled"},409);
         if(s.bankrupt.includes(player.player_id))return response({error:"investor_bankrupt"},409);
-        const dice=Math.floor(Math.random()*6)+1,old=s.positions[player.player_id]??0,next=(old+dice)%STOCK_TILES.length;
-        if(old+dice>=STOCK_TILES.length){s.cash[player.player_id]=(s.cash[player.player_id]??0)+200;addStockLog(s,"START: za průchod získáváš 200 ₵.");}
-        s.positions[player.player_id]=next;s.hasRolled=true;s.lastRoll=dice;s.pendingOffer=null;resolveStockTile(s,player.player_id,next);finishStockGame(s);
-        if(!(await saveStockState(code,state,loaded.updated_at)))return response({error:"state_conflict"},409);return response(await privateSnapshot(code,player,state));
+        const die1=Math.floor(Math.random()*6)+1,die2=Math.floor(Math.random()*6)+1;
+        s.lastRoll=[die1,die2];s.hasRolled=true;s.pendingPurchase=null;s.pendingUpgrade=null;s.marketOpen=false;s.marketTradeUsed=false;s.pendingOffer=null;
+        const isDouble=die1===die2;
+        if(s.jailed.includes(player.player_id)){
+          if(isDouble){
+            s.jailed=s.jailed.filter(id=>id!==player.player_id);s.jailTurns[player.player_id]=0;
+            s.doublesCount[player.player_id]=0;addStockLog(s,"HODIL JSI DVOJICI A OPOUŠTÍŠ VĚZENÍ.");
+          }else{
+            s.jailTurns[player.player_id]=(s.jailTurns[player.player_id]??0)+1;
+            if((s.jailTurns[player.player_id]??0)>=3){
+              chargeStockPlayer(s,player.player_id,null,100,"Po třetím neúspěšném hodu byla stržena kauce 100 ₵");
+              s.jailed=s.jailed.filter(id=>id!==player.player_id);s.jailTurns[player.player_id]=0;
+              addStockLog(s,"Kauce zaplacena automaticky. Další tah už hraješ normálně.");
+            }else addStockLog(s,"VĚZENÍ: nepadla dvojice. Zůstáváš zde ještě "+(3-(s.jailTurns[player.player_id]??0))+" pokus(y). Můžeš zaplatit kauci.");
+            if(s.bankrupt.includes(player.player_id))advanceStockTurn(s,player.player_id);
+            if(!(await saveStockState(code,state,loaded.updated_at)))return response({error:"state_conflict"},409);
+            return response(await privateSnapshot(code,player,state));
+          }
+        }
+        if(!s.jailed.includes(player.player_id)){
+          if(isDouble)s.doublesCount[player.player_id]=(s.doublesCount[player.player_id]??0)+1;
+          else s.doublesCount[player.player_id]=0;
+          if((s.doublesCount[player.player_id]??0)>=3){
+            s.positions[player.player_id]=10;s.lastLandedTile=10;s.jailed.push(player.player_id);s.jailTurns[player.player_id]=0;s.doublesCount[player.player_id]=0;
+            s.extraTurn=false;addStockLog(s,"TŘI DVOJICE ZA SEBOU. JDEŠ DO VĚZENÍ.");
+          }else{
+            const landed=moveStockPlayer(s,player.player_id,die1+die2);
+            s.extraTurn=isDouble;
+            resolveStockTile(s,player.player_id,landed);
+            if(isDouble&&!s.jailed.includes(player.player_id))addStockLog(s,"PADLA DVOJICE — po vyřízení políčka házíš ještě jednou.");
+          }
+        }
+        if(s.bankrupt.includes(player.player_id))advanceStockTurn(s,player.player_id);
+        finishStockGame(s);
+        if(!(await saveStockState(code,state,loaded.updated_at)))return response({error:"state_conflict"},409);
+        return response(await privateSnapshot(code,player,state));
       }
       if(action==="stock_buy"){
         if(s.gameOver)return response({error:"game_finished"},409);
-        if(!mine||s.bankrupt.includes(player.player_id))return response({error:"not_your_turn"},409);
-        const ticker=String(body.ticker??""),qty=Number(body.quantity);
-        if(!validTicker(ticker)||!Number.isInteger(qty)||qty<1||qty>10)return response({error:"invalid_trade"},400);
-        if(s.pendingOffer&&s.pendingOffer.ticker!==ticker)return response({error:"pending_offer_only"},409);
-        const discount=s.pendingOffer?.ticker===ticker?s.pendingOffer.discount:0,unit=Math.max(1,Math.round((s.prices[ticker]??0)*(1-discount))),total=unit*qty;
-        if(total>(s.cash[player.player_id]??0))return response({error:"not_enough_cash"},409);
-        s.cash[player.player_id]-=total;s.holdings[player.player_id]??={};s.holdings[player.player_id][ticker]=(s.holdings[player.player_id][ticker]??0)+qty;s.pendingOffer=null;
-        addStockLog(s,player.display_name+" nakoupil "+qty+"× "+ticker+" za "+total+" ₵.");
-        if(!(await saveStockState(code,state,loaded.updated_at)))return response({error:"state_conflict"},409);return response(await privateSnapshot(code,player,state));
+        if(!mine||!s.hasRolled||s.bankrupt.includes(player.player_id))return response({error:"not_your_turn"},409);
+        const offer=s.pendingPurchase;if(!offer)return response({error:"no_property_offer"},409);
+        if((s.cash[player.player_id]??0)<offer.price)return response({error:"not_enough_cash"},409);
+        if(s.properties[String(offer.tileIndex)]?.ownerId)return response({error:"property_already_owned"},409);
+        s.cash[player.player_id]-=offer.price;
+        s.properties[String(offer.tileIndex)]={ownerId:player.player_id,level:1};
+        s.pendingPurchase=null;
+        addStockLog(s,player.display_name+" koupil podíl ve firmě "+offer.ticker+" za "+offer.price+" ₵.");
+        if(!(await saveStockState(code,state,loaded.updated_at)))return response({error:"state_conflict"},409);
+        return response(await privateSnapshot(code,player,state));
       }
-      if(action==="stock_sell"){
+      if(action==="stock_pass"){
+        if(!mine||!s.hasRolled)return response({error:"not_your_turn"},409);
+        if(!s.pendingPurchase)return response({error:"no_property_offer"},409);
+        addStockLog(s,player.display_name+" odmítl koupit "+s.pendingPurchase.ticker+".");
+        s.pendingPurchase=null;
+        if(!(await saveStockState(code,state,loaded.updated_at)))return response({error:"state_conflict"},409);
+        return response(await privateSnapshot(code,player,state));
+      }
+      if(action==="stock_upgrade"){
         if(s.gameOver)return response({error:"game_finished"},409);
-        if(!mine||s.bankrupt.includes(player.player_id))return response({error:"not_your_turn"},409);
-        const ticker=String(body.ticker??""),qty=Number(body.quantity),owned=s.holdings[player.player_id]?.[ticker]??0;
-        if(!validTicker(ticker)||!Number.isInteger(qty)||qty<1||qty>owned)return response({error:"invalid_trade"},400);
-        const unit=Math.max(1,Math.round((s.prices[ticker]??0)*0.9)),proceeds=unit*qty;
-        s.holdings[player.player_id][ticker]=owned-qty;if(s.holdings[player.player_id][ticker]===0)delete s.holdings[player.player_id][ticker];
-        s.cash[player.player_id]=(s.cash[player.player_id]??0)+proceeds;addStockLog(s,player.display_name+" prodal "+qty+"× "+ticker+" za "+proceeds+" ₵.");
-        if(!(await saveStockState(code,state,loaded.updated_at)))return response({error:"state_conflict"},409);return response(await privateSnapshot(code,player,state));
+        if(!mine||!s.hasRolled||s.bankrupt.includes(player.player_id))return response({error:"not_your_turn"},409);
+        const offer=s.pendingUpgrade;if(!offer)return response({error:"no_upgrade_offer"},409);
+        const property=s.properties[String(offer.tileIndex)];
+        if(!property||property.ownerId!==player.player_id||property.level>=3)return response({error:"invalid_upgrade"},409);
+        if((s.cash[player.player_id]??0)<offer.price)return response({error:"not_enough_cash"},409);
+        s.cash[player.player_id]-=offer.price;property.level++;s.pendingUpgrade=null;
+        addStockLog(s,player.display_name+" navýšil svůj podíl ve firmě "+offer.ticker+" na úroveň "+property.level+".");
+        if(!(await saveStockState(code,state,loaded.updated_at)))return response({error:"state_conflict"},409);
+        return response(await privateSnapshot(code,player,state));
+      }
+      if(action==="stock_trade"){
+        if(s.gameOver)return response({error:"game_finished"},409);
+        if(!mine||!s.hasRolled||!s.marketOpen||s.marketTradeUsed||s.bankrupt.includes(player.player_id))return response({error:"market_closed"},409);
+        const ticker=String(body.ticker??""),quantity=Number(body.quantity),side=body.side==="sell"?"sell":"buy";
+        if(!validTicker(ticker)||!Number.isInteger(quantity)||quantity<1||quantity>20)return response({error:"invalid_trade"},400);
+        if(s.pendingOffer&&s.pendingOffer.ticker!==ticker)return response({error:"ipo_ticker_only"},409);
+        const discount=s.pendingOffer?.ticker===ticker?s.pendingOffer.discount:0;
+        if(side==="buy"){
+          const unit=Math.max(1,Math.round((s.prices[ticker]??0)*(1-discount))),total=unit*quantity;
+          if(total>(s.cash[player.player_id]??0))return response({error:"not_enough_cash"},409);
+          s.cash[player.player_id]-=total;s.holdings[player.player_id]??={};
+          s.holdings[player.player_id][ticker]=(s.holdings[player.player_id][ticker]??0)+quantity;
+          addStockLog(s,player.display_name+" nakoupil "+quantity+" akcií "+ticker+" za "+total+" ₵.");
+        }else{
+          const owned=s.holdings[player.player_id]?.[ticker]??0;
+          if(quantity>owned)return response({error:"not_enough_shares"},409);
+          const proceeds=Math.round((s.prices[ticker]??0)*0.9)*quantity;
+          s.holdings[player.player_id][ticker]=owned-quantity;
+          if(s.holdings[player.player_id][ticker]===0)delete s.holdings[player.player_id][ticker];
+          s.cash[player.player_id]=(s.cash[player.player_id]??0)+proceeds;
+          addStockLog(s,player.display_name+" prodal "+quantity+" akcií "+ticker+" za "+proceeds+" ₵.");
+        }
+        s.marketTradeUsed=true;s.pendingOffer=null;
+        if(!(await saveStockState(code,state,loaded.updated_at)))return response({error:"state_conflict"},409);
+        return response(await privateSnapshot(code,player,state));
+      }
+      if(action==="stock_bail"){
+        if(!mine||!s.jailed.includes(player.player_id))return response({error:"not_in_jail"},409);
+        if((s.cash[player.player_id]??0)<100)return response({error:"not_enough_cash"},409);
+        s.cash[player.player_id]-=100;s.jailed=s.jailed.filter(id=>id!==player.player_id);s.jailTurns[player.player_id]=0;
+        addStockLog(s,player.display_name+" zaplatil kauci 100 ₵ a opouští vězení.");
+        if(!(await saveStockState(code,state,loaded.updated_at)))return response({error:"state_conflict"},409);
+        return response(await privateSnapshot(code,player,state));
       }
       if(action==="stock_end_turn"){
         if(s.gameOver)return response({error:"game_finished"},409);
         if(!mine)return response({error:"not_your_turn"},409);
         if(!s.hasRolled)return response({error:"roll_before_end"},409);
-        s.pendingOffer=null;s.hasRolled=false;s.lastRoll=null;s.turn++;driftStocks(s);finishStockGame(s);
-        if(!s.gameOver){const index=s.turnOrder.indexOf(player.player_id);for(let step=1;step<=s.turnOrder.length;step++){const next=s.turnOrder[(index+step)%s.turnOrder.length];if(!s.bankrupt.includes(next)){s.currentTurn=next;break;}}finishStockGame(s);if(!s.gameOver)addStockLog(s,"Další tah: investor "+(s.turnOrder.indexOf(s.currentTurn)+1)+".");}
-        if(!(await saveStockState(code,state,loaded.updated_at)))return response({error:"state_conflict"},409);return response(await privateSnapshot(code,player,state));
+        if(s.pendingPurchase)return response({error:"purchase_or_pass"},409);
+        if(s.extraTurn&&!s.jailed.includes(player.player_id)&&!s.bankrupt.includes(player.player_id)){
+          s.extraTurn=false;s.hasRolled=false;s.pendingUpgrade=null;s.marketOpen=false;s.marketTradeUsed=false;s.pendingOffer=null;
+          addStockLog(s,"PADLA DVOJICE — dostáváš další hod.");
+        }else advanceStockTurn(s,player.player_id);
+        if(!(await saveStockState(code,state,loaded.updated_at)))return response({error:"state_conflict"},409);
+        return response(await privateSnapshot(code,player,state));
       }
       return response({error:"unknown_stock_action"},400);
     }
-
     if(action==="secret") {
       const characterId=Number(body.characterId);
       if(!Number.isInteger(characterId)||characterId<0||characterId>=CHARACTERS.length) return response({error:"invalid_character"},400);

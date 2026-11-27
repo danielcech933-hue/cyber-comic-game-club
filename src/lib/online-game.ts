@@ -42,7 +42,7 @@ export class OnlineGameError extends Error {
       invalid_character:"Vybraná postava není platná.",
       unknown_question:"Tato otázka ve hře neexistuje.",
       invalid_room_code:"Kód místnosti musí mít osm znaků.",
-      not_your_turn:"Teď není tvůj tah.",turn_already_rolled:"V tomto tahu už jsi házel kostkou.",roll_before_end:"Nejdřív hoď kostkou.",not_enough_cash:"Na tento nákup nemáš dost kapitálu.",invalid_trade:"Neplatný obchod s akciemi.",pending_offer_only:"Nejdřív vyřiď aktuální nabídku.",investor_bankrupt:"Tvůj investor je mimo hru.",state_conflict:"Herní stav se změnil. Obnovuji místnost.",
+      not_your_turn:"Teď není tvůj tah.",turn_already_rolled:"V tomto tahu už jsi házel kostkami.",roll_before_end:"Nejdřív hoď dvěma kostkami.",not_enough_cash:"Na tento nákup nemáš dost kapitálu.",invalid_trade:"Neplatný obchod s akciemi.",pending_offer_only:"Nejdřív vyřiď aktuální nabídku.",investor_bankrupt:"Tvůj investor je mimo hru.",state_conflict:"Herní stav se mezitím změnil. Obnovuji místnost.",no_property_offer:"Na tomto políčku není žádná firma k nákupu.",purchase_or_pass:"Nejdřív kup firmu, nebo nabídku odmítni.",property_already_owned:"Tato firma už má vlastníka.",no_upgrade_offer:"Na tomto políčku nelze posílit firmu.",invalid_upgrade:"Tento firemní podíl už nelze posílit.",market_closed:"Burzovní přepážka je zavřená nebo jsi už obchodoval.",ipo_ticker_only:"IPO nabízí pouze uvedenou společnost.",not_enough_shares:"Nemáš tolik akcií na prodej.",not_in_jail:"Nejsi ve vězení.",
     };
     super(messages[code] ?? code);
     this.name="OnlineGameError";
@@ -167,6 +167,11 @@ export async function leaveOnlineRoom(code:string,session:PlayerSession) {
 }
 
 export async function rollStockRoom(code:string,session:PlayerSession){return callApi("stock_roll",{code:code.toUpperCase()},session);}
-export async function buyStockRoom(code:string,session:PlayerSession,ticker:string,quantity:number){return callApi("stock_buy",{code:code.toUpperCase(),ticker,quantity},session);}
-export async function sellStockRoom(code:string,session:PlayerSession,ticker:string,quantity:number){return callApi("stock_sell",{code:code.toUpperCase(),ticker,quantity},session);}
+export async function buyStockRoom(code:string,session:PlayerSession){return callApi("stock_buy",{code:code.toUpperCase()},session);}
+export async function passStockRoom(code:string,session:PlayerSession){return callApi("stock_pass",{code:code.toUpperCase()},session);}
+export async function upgradeStockRoom(code:string,session:PlayerSession){return callApi("stock_upgrade",{code:code.toUpperCase()},session);}
+export async function tradeStockRoom(code:string,session:PlayerSession,ticker:string,quantity:number,side:"buy"|"sell"){
+ return callApi("stock_trade",{code:code.toUpperCase(),ticker,quantity,side},session);
+}
+export async function bailStockRoom(code:string,session:PlayerSession){return callApi("stock_bail",{code:code.toUpperCase()},session);}
 export async function endStockTurn(code:string,session:PlayerSession){return callApi("stock_end_turn",{code:code.toUpperCase()},session);}

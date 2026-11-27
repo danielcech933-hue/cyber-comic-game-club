@@ -9,7 +9,7 @@ import {
   getOnlineRoom, getPlayerSession, previewOnlineRoom, joinOnlineRoom, startOnlineGame, leaveOnlineRoom,
   chooseOnlineSecret, askOnlineQuestion, answerOnlineQuestion,
   guessOnlineCharacter, answerOnlineGuess,
-  rollStockRoom, buyStockRoom, sellStockRoom, endStockTurn,
+  rollStockRoom, buyStockRoom, passStockRoom, upgradeStockRoom, tradeStockRoom, bailStockRoom, endStockTurn,
   type OnlineRoom, type OnlineGameState, type PlayerSession, OnlineGameError,
 } from "@/lib/online-game";
 import { Bolt } from "@/components/lobby/Bolt";
@@ -188,8 +188,13 @@ function RoomPage() {
       body=(<div className="grid gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold tracking-[0.25em] text-neon">CYBER CHMEL · GAME 02</p><h2 className="font-display text-4xl sm:text-5xl">AKCIOVÉ <span className="text-pink">MONOPOLY</span> <span className="text-base text-paper/50">#{room.code}</span></h2></div><button type="button" onClick={()=>void leave()} className="cut-btn border-2 border-pink px-4 py-2 font-display text-lg text-pink">ODEJÍT</button></div>
         <StockMonopolyGame roomCode={room.code} players={room.players} session={session} gameState={gameState as StockGameState}
-          onRoll={()=>void act(()=>rollStockRoom(code,session))} onBuy={(ticker,qty)=>void act(()=>buyStockRoom(code,session,ticker,qty))}
-          onSell={(ticker,qty)=>void act(()=>sellStockRoom(code,session,ticker,qty))} onEndTurn={()=>void act(()=>endStockTurn(code,session))}/>
+          onRoll={()=>void act(()=>rollStockRoom(code,session))}
+          onBuy={()=>void act(()=>buyStockRoom(code,session))}
+          onPass={()=>void act(()=>passStockRoom(code,session))}
+          onUpgrade={()=>void act(()=>upgradeStockRoom(code,session))}
+          onMarketTrade={(ticker,quantity,side)=>void act(()=>tradeStockRoom(code,session,ticker,quantity,side))}
+          onBail={()=>void act(()=>bailStockRoom(code,session))}
+          onEndTurn={()=>void act(()=>endStockTurn(code,session))}/>
         {error&&<p className="border border-pink/40 bg-pink/10 p-3 text-sm text-pink">{error}</p>}
       </div>);
     } else if(room.game==="guess-who" && gameState && "secrets" in gameState) {
