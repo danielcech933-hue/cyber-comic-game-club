@@ -99,7 +99,7 @@ function RoomPage() {
       </div>
     );
   } else {
-    const state = room.gameState ?? { secrets: {}, questions: {}, guesses: {} };
+    const state = room.gameState ?? { secrets: {}, questions: {}, guesses: [] };
     const secret = state.secrets[me];
     body = (
       <div className="grid gap-4">
