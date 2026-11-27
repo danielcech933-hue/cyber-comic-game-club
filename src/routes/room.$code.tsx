@@ -1,13 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { LobbyHeader } from "@/components/lobby/LobbyHeader";
-import { Bolt } from "@/components/lobby/Bolt";
-import { AzKvizGame } from "@/components/games/AzKvizGame";
-import { MaskGame } from "@/components/games/MaskGame";
-import { SlovaGame } from "@/components/games/SlovaGame";
 import { GAMES } from "@/lib/games/catalog";
-import { addBot, joinRoom, leaveRoom, recordWin, setRoomStatus, useLobby } from "@/lib/lobby-store";
+import { joinRoom, leaveRoom, setRoomStatus, useLobby } from "@/lib/lobby-store";
 
 export const Route = createFileRoute("/room/$code")({
   head: ({ params }) => ({
@@ -31,16 +27,6 @@ function RoomPage() {
   const me = lobby.nick;
   const inRoom = !!room && room.players.includes(me);
   const [joinErr, setJoinErr] = useState("");
-
-  // While waiting with an empty seat, another player drops in after a moment.
-  useEffect(() => {
-    if (!room || !inRoom || room.status !== "waiting" || room.players.length >= Math.min(room.max, 2)) return;
-    const t = setTimeout(() => addBot(room.code), 3500);
-    return () => clearTimeout(t);
-  }, [room, inRoom]);
-
-  const game = room ? GAMES[room.game] : null;
-  const onWin = useCallback(() => { if (room) recordWin(room.game); }, [room?.game]); // eslint-disable-line react-hooks/exhaustive-deps
 
   let body: React.ReactNode;
   if (!lobby.ready) {
@@ -67,12 +53,12 @@ function RoomPage() {
     );
   } else if (room.status === "waiting") {
     const seats = Array.from({ length: room.max }, (_, i) => room.players[i]);
-    const canStart = room.players.length >= game.minPlayers;
+    const canStart = room.players.length >= 1;
     body = (
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <div className="dots grid gap-5 border-2 border-neon bg-noir p-6 sm:p-8">
           <div>
-            <p className="text-xs font-bold tracking-[0.3em] text-neon">MÍSTNOST</p>
+            <p className="text-xs font-bold tracking-[0.3em] text-neon">ČEKÁRNA ARÉNY</p>
             <h2 className="font-display text-5xl leading-none sm:text-6xl">{game.title} <span className="text-neon">{game.tag}</span></h2>
             <p className="mt-2 text-paper/70">{game.blurb}</p>
           </div>
@@ -84,7 +70,7 @@ function RoomPage() {
                   <p className="truncate font-display text-xl">{p ?? "ČEKÁ SE NA HRÁČE…"}</p>
                   {p && <p className="text-xs text-paper/50">{p === me ? "ty" : p === room.host ? "hostitel" : "připraven"}</p>}
                 </div>
-                {!p && <button type="button" onClick={() => addBot(room.code)} className="text-xs font-bold text-neon hover:underline">+ BOT</button>}
+                
               </div>
             ))}
           </div>
@@ -107,20 +93,15 @@ function RoomPage() {
       </div>
     );
   } else {
-    const others = room.players.filter((p) => p !== me);
-    const opponent = others[0] ?? "Soupeř";
     body = (
-      <div className="grid gap-3">
-        <div className="flex items-center justify-between">
-          <p className="font-display text-3xl">{game.title} <span className="text-neon">{game.tag}</span> <span className="text-lg text-paper/50">#{room.code}</span></p>
-          <button type="button" onClick={() => { leaveRoom(room.code); void navigate({ to: "/" }); }} className="cut-btn border-2 border-pink px-4 py-1 font-display text-xl text-pink hover:bg-pink hover:text-ink">ODEJÍT</button>
-        </div>
-        {room.game === "az" && <AzKvizGame me={me} opponent={opponent} onWin={onWin} />}
-        {room.game === "mask" && <MaskGame opponent={opponent} onWin={onWin} />}
-        {room.game === "slova" && <SlovaGame me={me} players={room.players} onWin={onWin} />}
+      <div className="mx-auto grid max-w-3xl gap-5 border-2 border-pink bg-noir p-6 text-center sm:p-10">
+        <p className="text-xs font-bold tracking-[0.3em] text-pink">ARÉNA #{room.code}</p>
+        <h2 className="font-display text-5xl sm:text-6xl">NOVÝ <span className="text-neon">GAME CLUB</span></h2>
+        <p className="text-paper/70">Místnost je připravená. Původní hry jsme odstranili a nové herní režimy doplníme samostatně.</p>
+        <button type="button" onClick={() => { leaveRoom(room.code); void navigate({ to: "/" }); }} className="cut-btn mx-auto border-2 border-pink px-6 py-2 font-display text-xl text-pink hover:bg-pink hover:text-ink">ZPĚT DO LOBBY</button>
       </div>
     );
-  }
+
 
   return (
     <div className="flex min-h-dvh flex-col gap-5 bg-ink p-3 sm:p-6">
