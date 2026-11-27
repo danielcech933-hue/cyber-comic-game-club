@@ -11,7 +11,7 @@ export function LobbyChat({ lobby }: { lobby: LobbyState }) {
 
   return (
     <div className="flex min-h-[420px] flex-1 flex-col gap-4 border-2 border-paper/15 bg-noir p-4 lg:min-h-0">
-      <p className="font-display text-2xl tracking-wide">ŽIVÝ CHAT</p>
+      <p className="font-display text-2xl tracking-wide">LOKÁLNÍ CHAT</p>
       <div ref={listRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
         {lobby.chat.map((m) => {
           const mine = m.author === "__me__" || (lobby.nick !== "" && m.author === lobby.nick);
@@ -54,7 +54,7 @@ export function LobbyChat({ lobby }: { lobby: LobbyState }) {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Napiš do lobby…"
+          placeholder="Napiš si zprávu…"
           maxLength={240}
           aria-label="Zpráva do lobby"
           className="w-full rounded-full border border-paper/20 bg-transparent px-4 py-2.5 text-sm text-paper placeholder:text-paper/40 focus:border-neon focus:outline-none"
