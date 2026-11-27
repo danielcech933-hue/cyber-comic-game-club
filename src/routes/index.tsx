@@ -52,7 +52,7 @@ function Lobby() {
             </div>
           </div>
           <div className="cut-c hatch relative flex min-h-[220px] flex-col justify-between overflow-hidden border-2 border-paper/30 bg-violet p-6">
-            <div className="comic-shadow self-end rotate-[-4deg] rounded-[28px] bg-paper px-5 py-3 font-display text-xl text-ink sm:text-2xl">VYBER SI TÝM!</div>
+            <div className="comic-shadow self-end rotate-[-4deg] rounded-[28px] bg-paper px-5 py-3 font-display text-xl text-ink sm:text-2xl">ZVOL SI POSTAVU!</div>
             <div className="pl-4">
               <h2 className="font-display text-4xl">TAJNÁ POSTAVA</h2>
               <p className="font-display text-lg text-neon">VYBER TAJNOU POSTAVU.</p>
