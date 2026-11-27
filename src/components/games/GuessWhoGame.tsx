@@ -28,7 +28,7 @@ export function GuessWhoGame({ players, me, gameState, onChooseSecret, onAskQues
   gameState: import("@/lib/lobby-store").GuessWhoState;
   onChooseSecret: (characterId: number) => void;
   onAskQuestion: (target: string, questionId: string, text: string) => void;
-  onAnswerQuestion: (questionId: string, yes: boolean) => void;
+  onAnswerQuestion: (questionId: string) => void;
   onGuess: (target: string, characterId: number) => void;
   onAnswerGuess: (guessId: string) => void;
 }) {
@@ -164,10 +164,9 @@ export function GuessWhoGame({ players, me, gameState, onChooseSecret, onAskQues
             <div key={question.id} className="grid gap-2 rounded-lg border border-paper/15 bg-ink p-3">
               <p className="text-sm text-paper/60">{question.asker} se ptá:</p>
               <p className="font-display text-xl">{question.text}</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => onAnswerQuestion(question.id, true)} className="cut-btn bg-neon py-2 font-display text-xl text-ink">ANO</button>
-                <button type="button" onClick={() => onAnswerQuestion(question.id, false)} className="cut-btn bg-pink py-2 font-display text-xl text-ink">NE</button>
-              </div>
+              <button type="button" onClick={() => onAnswerQuestion(question.id)} className="cut-btn bg-neon py-2 font-display text-xl text-ink">
+                ODPOVĚDĚT
+              </button>
             </div>
           ))}
         </div>
