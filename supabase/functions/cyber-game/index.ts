@@ -174,7 +174,7 @@ function moveStockPlayer(s:StockGameState,id:string,steps:number){
 function resolveStockTile(s:StockGameState,id:string,position:number){
   const tile=STOCK_TILES[position];
   if(tile.type==="start"){
-    s.cash[id]=(s.cash[id]??0)+200;addStockLog(s,"DOPAD NA START: získáváš dalších 200 ₵.");
+    addStockLog(s,"DOPAD NA START: vyzvedáváš 200 ₵ za průchod přes start.");
   }else if(tile.type==="company"&&tile.ticker){
     const property=s.properties[String(position)];
     const price=s.prices[tile.ticker]??100;
@@ -193,7 +193,7 @@ function resolveStockTile(s:StockGameState,id:string,position:number){
       chargeStockPlayer(s,id,property.ownerId,rent,"NÁJEM U "+tile.ticker+" zaplacen vlastníkovi");
     }
   }else if(tile.type==="tax"){
-    const tax=130;s.freeParkingPool+=tax;chargeStockPlayer(s,id,null,tax,"Regulační daň odvedena do společného banku");
+    const tax=130;s.freeParkingPool+=Math.min(s.cash[id]??0,tax);chargeStockPlayer(s,id,null,tax,"Regulační daň odvedena do společného banku");
   }else if(tile.type==="news"){
     const company=STOCKS[Math.floor(Math.random()*STOCKS.length)];
     const percent=Math.floor(Math.random()*13)+8,up=Math.random()<0.5;
@@ -201,7 +201,7 @@ function resolveStockTile(s:StockGameState,id:string,position:number){
     addStockLog(s,"BURZOVNÍ ZPRÁVA: "+company.ticker+" "+(up?"posílil":"oslabil")+" o "+percent+" %.");
   }else if(tile.type==="dividend"){
     const ownedPropertyValue=Object.entries(s.properties).filter(([,p])=>p.ownerId===id).reduce((sum,[index,p])=>{
-      const ticker=STOCK_TILES[Number(index)]?.ticker??"";return sum+(s.prices[ticker]??0)*5*p.level;
+      const ticker=STOCK_TILES[Number(index)]?.ticker??"";return sum+(s.prices[ticker]??0)*(5+Math.max(0,p.level-1)*2);
     },0);
     const sharesValue=Object.entries(s.holdings[id]??{}).reduce((sum,[ticker,qty])=>sum+(s.prices[ticker]??0)*qty,0);
     const payout=Math.floor((ownedPropertyValue+sharesValue)*0.05);
@@ -452,6 +452,8 @@ Deno.serve(async(req)=>{
         const stock=state.stock;
         bankruptStockPlayer(stock,player.player_id);
         if(stock.currentTurn===player.player_id) {
+          stock.hasRolled=false;stock.lastRoll=null;stock.extraTurn=false;stock.pendingPurchase=null;stock.pendingUpgrade=null;
+          stock.marketOpen=false;stock.marketTradeUsed=false;stock.pendingOffer=null;stock.turn++;
           const startIndex=stock.turnOrder.indexOf(player.player_id);
           for(let step=1;step<=stock.turnOrder.length;step++) {
             const next=stock.turnOrder[(startIndex+step)%stock.turnOrder.length];

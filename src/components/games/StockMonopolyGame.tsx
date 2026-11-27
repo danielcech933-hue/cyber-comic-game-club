@@ -103,7 +103,7 @@ export function StockMonopolyGame({roomCode,players,session,gameState,onRoll,onB
         <div className="my-3">
          <p className="font-display text-xl leading-tight text-white sm:text-3xl">{mine?"JSTE NA TAHU":`HRAJE ${current?.name?.toUpperCase()??"—"}`}</p>
          <div className="mt-3 flex items-center justify-center gap-4">
-          {[0,1].map(index=><div key={index} className="grid h-14 w-14 place-items-center rounded-xl border border-white/15 bg-[#07111c] text-4xl shadow-[0_8px_20px_rgba(0,0,0,.25)] sm:h-16 sm:w-16">{gameState.lastRoll?DICE_GLYPHS[gameState.lastRoll[index]]:"?"}</div>)}
+          {[0,1].map(index=><div key={index} className="grid h-14 w-14 place-items-center rounded-xl border border-white/15 bg-[#07111c] text-4xl shadow-[0_8px_20px_rgba(0,0,0,.25)] sm:h-16 sm:w-16">{gameState.lastRoll?DICE_GLYPHS[gameState.lastRoll[index]??0]:"?"}</div>)}
          </div>
          <p className="mt-2 text-[10px] font-bold uppercase tracking-[.2em] text-slate-500">{gameState.lastRoll?`HOD: ${gameState.lastRoll[0]} + ${gameState.lastRoll[1]} = ${gameState.lastRoll[0]+gameState.lastRoll[1]}`:"HOĎ DVĚMA KOSTKAMI"}</p>
         </div>

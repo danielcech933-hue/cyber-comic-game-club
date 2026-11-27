@@ -14,10 +14,10 @@ describe("Akciové Monopoly — desková hra",()=>{
   expect(STOCK_BOARD).toHaveLength(40);
   expect(new Set(STOCK_BOARD.map(t=>t.index)).size).toBe(40);
   expect(new Set(STOCK_BOARD.map(t=>t.row+":"+t.col)).size).toBe(40);
-  expect(STOCK_BOARD[0].type).toBe("start");
-  expect(STOCK_BOARD[10].type).toBe("jail");
-  expect(STOCK_BOARD[20].type).toBe("parking");
-  expect(STOCK_BOARD[30].type).toBe("go_to_jail");
+  expect(STOCK_BOARD[0]!.type).toBe("start");
+  expect(STOCK_BOARD[10]!.type).toBe("jail");
+  expect(STOCK_BOARD[20]!.type).toBe("parking");
+  expect(STOCK_BOARD[30]!.type).toBe("go_to_jail");
  });
  it("provides sixteen purchasable company spaces in eight paired tickers",()=>{
   const companies=STOCK_BOARD.filter(t=>t.type==="company");
