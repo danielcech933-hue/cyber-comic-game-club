@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { GAME_LIST, GAMES, type GameId } from "@/lib/games/catalog";
+import { GAMES, type GameId } from "@/lib/games/catalog";
 import { checkCustomCode, createRoom, joinRoom, setNick, quickPlay, type LobbyState } from "@/lib/lobby-store";
 import { Bolt } from "./Bolt";
 
@@ -15,7 +15,7 @@ export function ArenaDialog({
   const navigate = useNavigate();
   const [tab, setTab] = useState<ArenaTab>(initialTab);
   const game: GameId = "sandbox";
-  const [max, setMax] = useState(2);
+  const [max, setMax] = useState(8);
   const [code, setCode] = useState("");
   const [nick, setNickLocal] = useState("");
   const [error, setError] = useState("");
@@ -66,7 +66,7 @@ export function ArenaDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="hatch max-h-[92dvh] overflow-y-auto rounded-none border-2 border-neon bg-noir text-paper sm:rounded-none">
         <DialogTitle className="font-display text-4xl tracking-wider">
-          {tab === "browse" ? <>{g.title} <span className="text-neon">{g.tag}</span></> : <>ZALOŽIT <span className="text-neon">ARÉNU</span></>}
+          {tab === "browse" ? <>OTEVŘENÉ <span className="text-neon">MÍSTNOSTI</span></> : <>ZALOŽIT <span className="text-neon">MÍSTNOST</span></>}
         </DialogTitle>
         <DialogDescription className="text-sm text-paper/60">{tab === "browse" ? "Přehled aktuálně otevřených místností." : "Vytvoř prázdnou místnost pro svoji partu a pošli jí pozvánku."}</DialogDescription>
 
@@ -103,7 +103,7 @@ export function ArenaDialog({
                 <div key={r.code} className="grid gap-3 rounded-lg border border-paper/15 bg-ink p-3 sm:grid-cols-[1fr_auto] sm:items-center">
                   <div className="min-w-0">
                     <p className="font-display text-xl tracking-wider text-neon">#{r.code}</p>
-                    <p className="truncate text-sm text-paper/70">{r.players.join(", ")}</p><p className="mt-1 text-xs font-bold tracking-wider text-neon">{r.players.length} / {r.max} HRÁČŮ · {r.max-r.players.length} VOLNÁ MÍSTA</p>
+                    <p className="truncate text-sm text-paper/70">{r.players.join(", ")}</p><p className="mt-1 text-xs font-bold tracking-wider text-neon">{r.players.length} / {r.max} HRÁČŮ · {r.max-r.players.length} VOLNÝCH MÍST</p>
                   </div>
                   <button type="button" disabled={full} onClick={() => submitJoin(r.code)}
                     className="cut-btn bg-neon px-4 py-1.5 font-display text-lg text-ink hover:bg-paper disabled:bg-paper/20 disabled:text-paper/50">
