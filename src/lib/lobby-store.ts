@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import type { GameId } from "./games/catalog";
 import { GAMES } from "./games/catalog";
 
+export type GuessWhoQuestion = { id: string; asker: string; text: string; yes?: boolean; answered: boolean };
+export type GuessWhoGuess = { id: string; asker: string; target: string; characterId: number; correct?: boolean; answered: boolean };
+export type GuessWhoState = {
+  secrets: Record<string, number>;
+  questions: Record<string, GuessWhoQuestion[]>;
+  guesses: GuessWhoGuess[];
+};
 export type Room = {
   code: string;
   game: GameId;
@@ -9,7 +16,7 @@ export type Room = {
   players: string[];
   host: string;
   status: "waiting" | "playing";
-  gameState?: { secrets: Record<string, number>; questions: Record<string, Array<{ text: string; yes: boolean }>>; guesses: Record<string, { player: string; characterId: number; correct: boolean }[]> };
+  gameState?: GuessWhoState;
 };
 export type ChatMsg = { id: string; author: string; avatar?: AvatarKey; text: string; color: "paper" | "pink" };
 export type AvatarKey = "clip" | "curly" | "wavy";
