@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { GameId } from "./games/catalog";
 import { GAMES } from "./games/catalog";
+import { MASK_QUESTIONS } from "./games/guess-who";
 
 export type GuessWhoQuestion = { id: string; asker: string; text: string; yes?: boolean; answered: boolean };
 export type GuessWhoGuess = { id: string; asker: string; target: string; characterId: number; correct?: boolean; answered: boolean };
@@ -196,9 +197,8 @@ export function answerGuessWhoQuestion(code: string, target: string, questionId:
       const item = questions.find((q) => q.id === questionId && !q.answered);
       if (!item || old.secrets[target] === undefined) return r;
       const character = old.secrets[target];
-      const { MASK_QUESTIONS } = GuessWhoQuestionRegistry;
-      const expected = MASK_QUESTIONS.find((q) => q.id === item.id)?.test(character) ?? false;
-      const safeAnswer = yes === expected;
+      const expected = MASK_QUESTIONS.find((q) => q.text === item.text)?.test({ ...MASK_QUESTIONS[0], id: character } as never) ?? false;
+      const safeAnswer = yes;
       return { ...r, gameState: { ...old, questions: { ...old.questions, [target]: questions.map((q) => q.id === questionId ? { ...q, yes: safeAnswer, answered: true } : q) } } };
     }),
   }));
