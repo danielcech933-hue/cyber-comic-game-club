@@ -178,7 +178,8 @@ export function addGuessWhoQuestion(code: string, asker: string, target: string,
       const old = r.gameState ?? emptyGuessWhoState();
       if (old.secrets[asker] === undefined || old.secrets[target] === undefined) return r;
       const prior = old.questions[target] ?? [];
-      if (prior.filter((q) => q.asker === asker).length >= 6 || prior.some((q) => q.id === questionId && q.asker === asker)) return r;
+      const askerQuestions = prior.filter((q) => q.asker === asker);
+      if (askerQuestions.length >= 6 || askerQuestions.some((q) => q.id === questionId)) return r;
       const question = { id: questionId, asker, text, answered: false };
       return { ...r, gameState: { ...old, questions: { ...old.questions, [target]: [...prior, question] } } };
     }),
@@ -192,8 +193,13 @@ export function answerGuessWhoQuestion(code: string, target: string, questionId:
       if (r.code !== code || r.status !== "playing" || !r.players.includes(target)) return r;
       const old = r.gameState ?? emptyGuessWhoState();
       const questions = old.questions[target] ?? [];
-      if (!questions.some((q) => q.id === questionId && !q.answered)) return r;
-      return { ...r, gameState: { ...old, questions: { ...old.questions, [target]: questions.map((q) => q.id === questionId ? { ...q, yes, answered: true } : q) } } };
+      const item = questions.find((q) => q.id === questionId && !q.answered);
+      if (!item || old.secrets[target] === undefined) return r;
+      const character = old.secrets[target];
+      const { MASK_QUESTIONS } = GuessWhoQuestionRegistry;
+      const expected = MASK_QUESTIONS.find((q) => q.id === item.id)?.test(character) ?? false;
+      const safeAnswer = yes === expected;
+      return { ...r, gameState: { ...old, questions: { ...old.questions, [target]: questions.map((q) => q.id === questionId ? { ...q, yes: safeAnswer, answered: true } : q) } } };
     }),
   }));
 }
