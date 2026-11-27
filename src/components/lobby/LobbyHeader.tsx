@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Bolt } from "./Bolt";
 
-export function LobbyHeader({ online = 41 }: { online?: number }) {
+export function LobbyHeader() {
   return (
     <header className="cut-header hatch relative flex h-16 items-center justify-between gap-3 border-b-2 border-neon bg-noir px-5 sm:h-20 sm:px-8">
       <Link to="/" className="flex min-w-0 items-center gap-3">
@@ -18,10 +18,7 @@ export function LobbyHeader({ online = 41 }: { online?: number }) {
             <span className="absolute inset-0 animate-ping rounded-full bg-neon opacity-60" />
             <span className="absolute inset-0 rounded-full bg-neon" />
           </span>
-          {online} hráčů online
-        </div>
-        <div className="glow-pink rounded-full border-2 border-pink px-3 py-1 font-display text-lg tracking-wide text-pink sm:px-5 sm:py-2 sm:text-2xl">
-          2 480 ₵
+          ONLINE HERNÍ KLUB
         </div>
       </div>
     </header>
