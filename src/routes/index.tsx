@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import guessWhoArt from "@/assets/avatar_wavy.jpg.asset.json";
 import { LobbyHeader } from "@/components/lobby/LobbyHeader";
 import { LobbyChat } from "@/components/lobby/LobbyChat";
 import { ArenaDialog, type ArenaTab } from "@/components/lobby/ArenaDialog";
@@ -34,7 +33,7 @@ function Lobby() {
             <div>
               <p className="text-xs font-bold tracking-[0.3em] text-neon">CYBER CHMEL · GAME CLUB</p>
               <h2 className="mt-3 font-display text-6xl leading-none sm:text-7xl">VSTUP DO<br /><span className="text-neon">ARÉNY</span></h2>
-              <p className="mt-4 max-w-md text-paper/65">Vytvoř místnost, pozvi kamarády a zjisti, kdo dokáže odhalit tajnou postavu jako první.</p>
+              <p className="mt-4 max-w-md text-paper/65">Vyber si hru, založ online místnost a vyzvi kamarády. Od logiky až po burzovní strategii.</p>
             </div>
             <svg viewBox="0 0 220 190" className="w-56 self-center sm:w-72" fill="none" stroke="var(--neon)" strokeWidth="2" aria-hidden>
               <circle cx="110" cy="25" r="16" /><circle cx="90" cy="60" r="16" /><circle cx="130" cy="60" r="16" fill="var(--neon)" />
@@ -42,20 +41,20 @@ function Lobby() {
               <circle cx="50" cy="130" r="16" fill="var(--neon)" /><circle cx="90" cy="130" r="16" /><circle cx="130" cy="130" r="16" /><circle cx="170" cy="130" r="16" />
               <path d="M196 10l-14 26h10l-8 22" strokeWidth="3" />
             </svg>
-            <p className="font-display text-2xl tracking-wider text-neon">HÁDEJ KDO · 2–8 HRÁČŮ</p>
+            <p className="font-display text-2xl tracking-wider text-neon">2 ONLINE HRY · 2–8 HRÁČŮ</p>
           </div>
           <div className="cut-b relative flex min-h-[220px] flex-col justify-end overflow-hidden border-2 border-pink bg-ink p-6 pl-10 sm:pl-16">
             <div className="laser absolute left-[18%] right-0 top-[38%] h-3 bg-pink" />
             <div className="relative w-fit bg-ink/80 px-3 py-2">
-              <p className="text-xs font-bold tracking-[0.25em] text-pink">PRVNÍ NOVÁ HRA</p>
+              <p className="text-xs font-bold tracking-[0.25em] text-pink">LOGICKÁ HRA</p>
               <h2 className="font-display text-4xl leading-none sm:text-5xl">HÁDEJ<br />KDO</h2>
             </div>
           </div>
           <div className="cut-c hatch relative flex min-h-[220px] flex-col justify-between overflow-hidden border-2 border-paper/30 bg-violet p-6">
-            <div className="comic-shadow self-end rotate-[-4deg] rounded-[28px] bg-paper px-5 py-3 font-display text-xl text-ink sm:text-2xl">ZVOL SI POSTAVU!</div>
+            <div className="comic-shadow self-end rotate-[-4deg] rounded-[28px] bg-paper px-5 py-3 font-display text-xl text-ink sm:text-2xl">BURZOVNÍ TRH</div>
             <div className="pl-4">
-              <h2 className="font-display text-4xl">TAJNÁ POSTAVA</h2>
-              <p className="font-display text-lg text-neon">VYBER TAJNOU POSTAVU.</p>
+              <h2 className="font-display text-4xl">AKCIOVÉ MONOPOLY</h2>
+              <p className="font-display text-lg text-neon">INVESTUJ · OBCHODUJ · VYHRAJ</p>
             </div>
           </div>
         </section>

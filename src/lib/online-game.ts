@@ -1,3 +1,5 @@
+import type { GameId } from "@/lib/games/catalog";
+import type { StockGameState } from "@/lib/games/stock-monopoly";
 const SUPABASE_URL = "https://ntzjirsejfvgvuhmbqvt.supabase.co";
 const SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50emppcnNlamZ2Z3Z1aG1icXZ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1NTk1NDYsImV4cCI6MjEwMjEzNTU0Nn0.kcFxKvyxqYL0c7EcCnJ8SYhBDp-gdOeUgQ-toOK5sfI";
 const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/cyber-game`;
@@ -5,7 +7,7 @@ const SESSION_PREFIX = "cyber-chmel-player:";
 const ROOM_KEY = "cyber-chmel-current-room";
 
 export type OnlinePlayer = { id: string; name: string; isHost: boolean; online: boolean };
-export type OnlineRoomSummary = { code: string; game: "guess-who"; status: "waiting" | "playing"; max: number; players: OnlinePlayer[] };
+export type OnlineRoomSummary = { code: string; game: GameId; status: "waiting" | "playing"; max: number; players: OnlinePlayer[] };
 export type OnlineQuestion = { id: string; asker: string; text: string; yes?: boolean; answered: boolean };
 export type OnlineGuess = { id: string; asker: string; target: string; characterId: number; correct?: boolean; answered: boolean };
 export type OnlineGameState = {
@@ -14,7 +16,7 @@ export type OnlineGameState = {
   questions: Record<string, OnlineQuestion[]>;
   guesses: OnlineGuess[];
 };
-export type OnlineRoom = OnlineRoomSummary & { gameState: OnlineGameState };
+export type OnlineRoom = OnlineRoomSummary & { gameState: OnlineGameState | StockGameState | null };
 export type PlayerSession = { playerId: string; token: string; displayName: string };
 
 export class OnlineGameError extends Error {
@@ -40,6 +42,7 @@ export class OnlineGameError extends Error {
       invalid_character:"Vybraná postava není platná.",
       unknown_question:"Tato otázka ve hře neexistuje.",
       invalid_room_code:"Kód místnosti musí mít osm znaků.",
+      not_your_turn:"Teď není tvůj tah.",turn_already_rolled:"V tomto tahu už jsi házel kostkou.",roll_before_end:"Nejdřív hoď kostkou.",not_enough_cash:"Na tento nákup nemáš dost kapitálu.",invalid_trade:"Neplatný obchod s akciemi.",pending_offer_only:"Nejdřív vyřiď aktuální nabídku.",investor_bankrupt:"Tvůj investor je mimo hru.",state_conflict:"Herní stav se změnil. Obnovuji místnost.",
     };
     super(messages[code] ?? code);
     this.name="OnlineGameError";
@@ -99,8 +102,8 @@ export async function listOnlineRooms():Promise<OnlineRoomSummary[]> {
 export async function previewOnlineRoom(code:string):Promise<OnlineRoomSummary> {
   return callApi<OnlineRoomSummary>("preview",{code:code.toUpperCase()});
 }
-export async function createOnlineRoom(name:string,maxPlayers:number):Promise<{room:OnlineRoomSummary;session:PlayerSession}> {
-  const result=await callApi<OnlineRoomSummary & {playerId:string;token:string}>("create",{name,maxPlayers});
+export async function createOnlineRoom(name:string,maxPlayers:number,game:GameId="guess-who"):Promise<{room:OnlineRoomSummary;session:PlayerSession}> {
+  const result=await callApi<OnlineRoomSummary & {playerId:string;token:string}>("create",{name,maxPlayers,game});
   const session={playerId:result.playerId,token:result.token,displayName:name};
   savePlayerSession(result.code,session);
   setCurrentRoomCode(result.code);
@@ -120,39 +123,17 @@ function isRecord(value:unknown):value is Record<string,unknown> {
 }
 
 export function normalizeOnlineRoomResponse(payload:unknown):OnlineRoom {
-  if(!isRecord(payload)) throw new OnlineGameError("invalid_room_payload",502);
-  // Accept both the old nested shape and the canonical flat room response.
-  const room=isRecord(payload["room"])?payload["room"]:payload;
-  const rawState=isRecord(payload["gameState"])?payload["gameState"]:{};
-  const rawSecrets=rawState["secrets"];
-  const secrets=isRecord(rawSecrets)
-    ? Object.fromEntries(Object.entries(rawSecrets).filter((entry):entry is [string,number]=>typeof entry[1]==="number"))
-    : {};
-  const rawPlayers=room["players"];
-  const players=Array.isArray(rawPlayers)?rawPlayers:[];
-  if(typeof room["code"]!=="string" || !["waiting","playing"].includes(String(room["status"])) || players.length===0) {
-    throw new OnlineGameError("invalid_room_payload",502);
-  }
-  return {
-    code:room["code"],
-    game:"guess-who",
-    status:room["status"] as "waiting"|"playing",
-    max:typeof room["max"]==="number"?room["max"]:4,
-    players:players.filter(isRecord).map((player)=>({
-      id:String(player["id"]??""),
-      name:String(player["name"]??""),
-      isHost:player["isHost"]===true,
-      online:player["online"]===true,
-    })),
-    gameState:{
-      secrets,
-      selectedPlayers:Array.isArray(rawState["selectedPlayers"])
-        ? rawState["selectedPlayers"].filter((name):name is string=>typeof name==="string")
-        : Object.keys(secrets),
-      questions:isRecord(rawState["questions"])?rawState["questions"] as OnlineGameState["questions"]:{},
-      guesses:Array.isArray(rawState["guesses"])?rawState["guesses"] as OnlineGuess[]:[],
-    },
-  };
+ if(!isRecord(payload))throw new OnlineGameError("invalid_room_payload",502);
+ const room=isRecord(payload["room"])?payload["room"]:payload,raw=isRecord(payload["gameState"])?payload["gameState"]:{},rawSecrets=raw["secrets"];
+ const secrets=isRecord(rawSecrets)?Object.fromEntries(Object.entries(rawSecrets).filter((e):e is [string,number]=>typeof e[1]==="number")):{};
+ const players=Array.isArray(room["players"])?room["players"]:[];
+ if(typeof room["code"]!=="string"||!["waiting","playing"].includes(String(room["status"]))||players.length===0)throw new OnlineGameError("invalid_room_payload",502);
+ const game:GameId=room["game"]==="stock-monopoly"?"stock-monopoly":"guess-who";
+ return {code:room["code"],game,status:room["status"] as "waiting"|"playing",max:typeof room["max"]==="number"?room["max"]:4,
+ players:players.filter(isRecord).map(p=>({id:String(p["id"]??""),name:String(p["name"]??""),isHost:p["isHost"]===true,online:p["online"]===true})),
+ gameState:game==="stock-monopoly"?(isRecord(payload["gameState"])?payload["gameState"] as unknown as StockGameState:null):{
+ secrets,selectedPlayers:Array.isArray(raw["selectedPlayers"])?raw["selectedPlayers"].filter((x):x is string=>typeof x==="string"):Object.keys(secrets),
+ questions:isRecord(raw["questions"])?raw["questions"] as OnlineGameState["questions"]:{},guesses:Array.isArray(raw["guesses"])?raw["guesses"] as OnlineGuess[]:[]}};
 }
 
 export async function getOnlineRoom(code:string,session?:PlayerSession):Promise<OnlineRoom> {
@@ -184,3 +165,8 @@ export async function leaveOnlineRoom(code:string,session:PlayerSession) {
   forgetPlayerSession(code);
   setCurrentRoomCode(null);
 }
+
+export async function rollStockRoom(code:string,session:PlayerSession){return callApi("stock_roll",{code:code.toUpperCase()},session);}
+export async function buyStockRoom(code:string,session:PlayerSession,ticker:string,quantity:number){return callApi("stock_buy",{code:code.toUpperCase(),ticker,quantity},session);}
+export async function sellStockRoom(code:string,session:PlayerSession,ticker:string,quantity:number){return callApi("stock_sell",{code:code.toUpperCase(),ticker,quantity},session);}
+export async function endStockTurn(code:string,session:PlayerSession){return callApi("stock_end_turn",{code:code.toUpperCase()},session);}

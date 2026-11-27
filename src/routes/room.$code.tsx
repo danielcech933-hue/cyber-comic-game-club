@@ -3,14 +3,17 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { LobbyHeader } from "@/components/lobby/LobbyHeader";
 import { GuessWhoGame } from "@/components/games/GuessWhoGame";
+import { StockMonopolyGame } from "@/components/games/StockMonopolyGame";
 import { GAMES } from "@/lib/games/catalog";
 import {
   getOnlineRoom, getPlayerSession, previewOnlineRoom, joinOnlineRoom, startOnlineGame, leaveOnlineRoom,
   chooseOnlineSecret, askOnlineQuestion, answerOnlineQuestion,
   guessOnlineCharacter, answerOnlineGuess,
-  type OnlineRoom, type PlayerSession, OnlineGameError,
+  rollStockRoom, buyStockRoom, sellStockRoom, endStockTurn,
+  type OnlineRoom, type OnlineGameState, type PlayerSession, OnlineGameError,
 } from "@/lib/online-game";
 import { Bolt } from "@/components/lobby/Bolt";
+import type { StockGameState } from "@/lib/games/stock-monopoly";
 
 export const Route = createFileRoute("/room/$code")({
   head: ({ params }) => ({
@@ -93,7 +96,7 @@ function RoomPage() {
       .then(()=>toast.success("Odkaz zkopírován"),()=>toast.error("Kopírování selhalo"));
   };
 
-  const game=GAMES["guess-who"];
+  const game=GAMES[room?.game ?? invitePreview?.game ?? "guess-who"];
   let body:React.ReactNode;
   if(loading) {
     body=<p className="animate-pulse py-24 text-center font-display text-4xl text-neon">NAČÍTÁM ARÉNU…</p>;
@@ -102,7 +105,7 @@ function RoomPage() {
       <div className="mx-auto grid max-w-xl gap-5 border-2 border-neon bg-noir p-6 sm:p-8">
         <div className="text-center">
           <p className="text-xs font-bold tracking-[0.3em] text-neon">POZVÁNKA DO ONLINE ARÉNY</p>
-          <h2 className="mt-2 font-display text-5xl">HÁDEJ <span className="text-pink">KDO?</span></h2>
+          <h2 className="mt-2 font-display text-4xl">{GAMES[invitePreview.game].title}</h2>
           <p className="mt-2 text-paper/70">Místnost #{invitePreview.code} · {invitePreview.players.length}/{invitePreview.max} hráčů</p>
           <p className="mt-1 text-sm text-paper/50">{invitePreview.players.map(p=>p.name).join(" · ")}</p>
         </div>
@@ -173,7 +176,7 @@ function RoomPage() {
           {isHost?(
             <button type="button" disabled={!canStart||starting} onClick={()=>void start()}
               className="cut-btn glow-neon flex h-20 items-center justify-center gap-3 border-2 border-neon bg-neon/10 font-display text-3xl tracking-wider text-neon hover:bg-neon hover:text-ink disabled:opacity-40">
-              <Bolt size={20}/>{starting?"SPOUŠTÍM…":"SPUSTIT HÁDEJ KDO"}
+              <Bolt size={20}/>{starting?"SPOUŠTÍM…":"SPUSTIT HRU"}
             </button>
           ):<p className="border border-paper/15 bg-noir p-4 text-center text-sm text-paper/60">Čekáš, až hostitel spustí hru.</p>}
         </aside>
@@ -181,29 +184,24 @@ function RoomPage() {
     );
   } else {
     const gameState=room.gameState;
-    body=(
-      <div className="grid gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold tracking-[0.25em] text-neon">CYBER CHMEL · GAME 01</p>
-            <h2 className="font-display text-4xl sm:text-5xl">HÁDEJ <span className="text-pink">KDO?</span> <span className="text-base text-paper/50">#{room.code}</span></h2>
-          </div>
-          <button type="button" onClick={()=>void leave()} className="cut-btn border-2 border-pink px-4 py-2 font-display text-lg text-pink hover:bg-pink hover:text-ink">ODEJÍT</button>
-        </div>
-        <GuessWhoGame
-          key={room.code+session.displayName}
-          players={room.players.map(p=>p.name)}
-          me={session.displayName}
-          gameState={gameState}
-          onChooseSecret={(characterId)=>void act(()=>chooseOnlineSecret(code,session,characterId))}
-          onAskQuestion={(target,questionId)=>void act(()=>askOnlineQuestion(code,session,target,questionId))}
-          onAnswerQuestion={(questionId)=>void act(()=>answerOnlineQuestion(code,session,questionId))}
-          onGuess={(target,characterId)=>void act(()=>guessOnlineCharacter(code,session,target,characterId))}
-          onAnswerGuess={(guessId)=>void act(()=>answerOnlineGuess(code,session,guessId))}
-        />
+    if(room.game==="stock-monopoly" && gameState) {
+      body=(<div className="grid gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold tracking-[0.25em] text-neon">CYBER CHMEL · GAME 02</p><h2 className="font-display text-4xl sm:text-5xl">AKCIOVÉ <span className="text-pink">MONOPOLY</span> <span className="text-base text-paper/50">#{room.code}</span></h2></div><button type="button" onClick={()=>void leave()} className="cut-btn border-2 border-pink px-4 py-2 font-display text-lg text-pink">ODEJÍT</button></div>
+        <StockMonopolyGame roomCode={room.code} players={room.players} session={session} gameState={gameState as StockGameState}
+          onRoll={()=>void act(()=>rollStockRoom(code,session))} onBuy={(ticker,qty)=>void act(()=>buyStockRoom(code,session,ticker,qty))}
+          onSell={(ticker,qty)=>void act(()=>sellStockRoom(code,session,ticker,qty))} onEndTurn={()=>void act(()=>endStockTurn(code,session))}/>
         {error&&<p className="border border-pink/40 bg-pink/10 p-3 text-sm text-pink">{error}</p>}
-      </div>
-    );
+      </div>);
+    } else if(room.game==="guess-who" && gameState && "secrets" in gameState) {
+      body=(<div className="grid gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold tracking-[0.25em] text-neon">CYBER CHMEL · GAME 01</p><h2 className="font-display text-4xl sm:text-5xl">HÁDEJ <span className="text-pink">KDO?</span> <span className="text-base text-paper/50">#{room.code}</span></h2></div><button type="button" onClick={()=>void leave()} className="cut-btn border-2 border-pink px-4 py-2 font-display text-lg text-pink">ODEJÍT</button></div>
+        <GuessWhoGame key={room.code+session.displayName} players={room.players.map(p=>p.name)} me={session.displayName} gameState={gameState as OnlineGameState}
+          onChooseSecret={id=>void act(()=>chooseOnlineSecret(code,session,id))} onAskQuestion={(target,id)=>void act(()=>askOnlineQuestion(code,session,target,id))}
+          onAnswerQuestion={id=>void act(()=>answerOnlineQuestion(code,session,id))} onGuess={(target,id)=>void act(()=>guessOnlineCharacter(code,session,target,id))}
+          onAnswerGuess={id=>void act(()=>answerOnlineGuess(code,session,id))}/>
+        {error&&<p className="border border-pink/40 bg-pink/10 p-3 text-sm text-pink">{error}</p>}
+      </div>);
+    } else body=<p className="border border-pink/30 bg-noir p-8 text-center text-pink">Herní stav se nepodařilo načíst. Obnov stránku.</p>;
   }
 
   return (
