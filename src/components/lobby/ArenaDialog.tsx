@@ -84,7 +84,7 @@ export function ArenaDialog({
           <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Hra">
             {GAME_LIST.map((x) => (
               <button key={x.id} type="button" role="radio" aria-checked={game === x.id}
-                onClick={() => { setGame(x.id); setMax(x.maxPlayers === 2 ? 2 : 4); }}
+                onClick={() => setMax(x.maxPlayers)}
                 className={`border-2 px-2 py-2 text-left font-display text-lg leading-none ${game === x.id ? "border-neon bg-neon/10 text-neon" : "border-paper/20 text-paper/70 hover:border-paper/50"}`}>
                 {x.title}<span className="block text-sm text-pink">{x.tag}</span>
               </button>
