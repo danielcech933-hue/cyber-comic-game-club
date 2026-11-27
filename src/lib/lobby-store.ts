@@ -166,7 +166,7 @@ export function setGuessWhoSecret(code: string, player: string, characterId: num
     rooms: s.rooms.map((r) => {
       if (r.code !== code || r.status !== "playing" || !r.players.includes(player) || !Number.isInteger(characterId) || characterId < 0 || characterId >= CHARACTERS.length) return r;
       const old = r.gameState ?? emptyGuessWhoState();
-      return { ...r, gameState: { ...old, secrets: { ...old.secrets, [player]: characterId } } };
+      return { ...r, gameState: { ...old, secrets: { ...old.secrets, [player]: characterId }, selectedPlayers: Array.from(new Set([...(old.selectedPlayers ?? []), player])) } };
     }),
   }));
 }
