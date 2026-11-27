@@ -5,7 +5,7 @@ import { LobbyHeader } from "@/components/lobby/LobbyHeader";
 import { GuessWhoGame } from "@/components/games/GuessWhoGame";
 import { GAMES } from "@/lib/games/catalog";
 import {
-  addGuessWhoGuess, addGuessWhoQuestion, joinRoom, leaveRoom,
+  addGuessWhoGuess, addGuessWhoQuestion, answerGuessWhoGuess, answerGuessWhoQuestion, joinRoom, leaveRoom,
   setGuessWhoSecret, setRoomStatus, useLobby,
 } from "@/lib/lobby-store";
 import { Bolt } from "@/components/lobby/Bolt";
@@ -116,9 +116,11 @@ function RoomPage() {
           me={me}
           secretCharacter={secret}
           onChooseSecret={(characterId) => setGuessWhoSecret(room.code, me, characterId)}
-          onAskQuestion={(targetPlayer, question, yes) => addGuessWhoQuestion(room.code, targetPlayer, question, yes)}
-          onGuess={(targetPlayer, characterId) => addGuessWhoGuess(room.code, targetPlayer, characterId)}
-          roomState={state}
+          gameState={state}
+          onAskQuestion={(target, questionId, text) => addGuessWhoQuestion(room.code, me, target, questionId, text)}
+          onAnswerQuestion={(questionId, yes) => answerGuessWhoQuestion(room.code, me, questionId, yes)}
+          onGuess={(target, characterId) => addGuessWhoGuess(room.code, me, target, characterId)}
+          onAnswerGuess={(guessId) => answerGuessWhoGuess(room.code, me, guessId)}
         />
       </div>
     );
