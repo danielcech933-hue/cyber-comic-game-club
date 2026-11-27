@@ -57,7 +57,9 @@ function RoomPage() {
 
   useEffect(()=>{
     void refresh();
-    const id=window.setInterval(()=>void refresh(),1200);
+    const id=window.setInterval(()=>{
+      if (!document.hidden && getPlayerSession(code)) void refresh();
+    },2000);
     return()=>window.clearInterval(id);
   },[refresh]);
 
@@ -136,7 +138,7 @@ function RoomPage() {
   } else if(room.status==="waiting") {
     const seats=Array.from({length:room.max},(_,i)=>room.players[i]);
     const canStart=room.players.length>=game.minPlayers;
-    const isHost=room.players.some(p=>p.name===session.displayName&&p.isHost);
+    const isHost=room.players.some(p=>p.id===session.playerId&&p.isHost);
     body=(
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <section className="dots grid gap-5 border-2 border-neon bg-noir p-6 sm:p-8">
@@ -151,7 +153,7 @@ function RoomPage() {
                 <span className={`grid h-10 w-10 place-items-center rounded-full border-2 font-display text-xl ${player?"border-neon text-neon":"border-paper/20 text-paper/30"}`}>{player?player.name.charAt(0):"?"}</span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-display text-xl">{player?.name??"ČEKÁ SE NA HRÁČE…"}</p>
-                  {player&&<p className="text-xs text-paper/50">{player.name===session.displayName?"ty":player.isHost?"hostitel":player.online?"online":"neaktivní"}{player.isHost&&player.name===session.displayName?" · hostitel":""}</p>}
+                  {player&&<p className="text-xs text-paper/50">{player.id===session.playerId?"ty":player.isHost?"hostitel":player.online?"online":"neaktivní"}{player.isHost&&player.id===session.playerId?" · hostitel":""}</p>}
                 </div>
                 {player?.online&&<span className="h-2.5 w-2.5 rounded-full bg-neon"/>}
               </div>
