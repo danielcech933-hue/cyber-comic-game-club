@@ -14,15 +14,15 @@ export function ArenaDialog({
 }) {
   const navigate = useNavigate();
   const [tab, setTab] = useState<ArenaTab>(initialTab);
-  const game: GameId = "sandbox";
-  const [max, setMax] = useState(8);
+  const game: GameId = "guess-who";
+  const [max, setMax] = useState(4);
   const [code, setCode] = useState("");
   const [nick, setNickLocal] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (open) {
-      setTab(initialTab); setMax(8);
+      setTab(initialTab); setMax(4);
       setCode(""); setError(""); setNickLocal(lobby.nick);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -66,7 +66,7 @@ export function ArenaDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="hatch max-h-[92dvh] overflow-y-auto rounded-none border-2 border-neon bg-noir text-paper sm:rounded-none">
         <DialogTitle className="font-display text-4xl tracking-wider">
-          {tab === "browse" ? <>OTEVŘENÉ <span className="text-neon">MÍSTNOSTI</span></> : <>ZALOŽIT <span className="text-neon">MÍSTNOST</span></>}
+          {tab === "browse" ? <>OTEVŘENÉ <span className="text-neon">MÍSTNOSTI</span></> : <>HÁDEJ KDO · <span className="text-neon">ARÉNA</span></> }
         </DialogTitle>
         <DialogDescription className="text-sm text-paper/60">{tab === "browse" ? "Přehled aktuálně otevřených místností." : "Vytvoř prázdnou místnost pro svoji partu a pošli jí pozvánku."}</DialogDescription>
 
@@ -80,7 +80,7 @@ export function ArenaDialog({
           </label>
         )}
 
-        {false && tab !== "join" && (
+        {tab !== "join" && (
           <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Hra">
             {GAME_LIST.map((x) => (
               <button key={x.id} type="button" role="radio" aria-checked={game === x.id}
@@ -130,7 +130,7 @@ export function ArenaDialog({
                     className={`h-10 w-10 border-2 font-display text-xl ${max === n ? "border-pink bg-pink text-ink" : "border-paper/20 text-paper"}`}>{n}</button>
                 ))}
               </div>
-              {g.maxPlayers === 2 && <span className="text-[11px] font-semibold tracking-normal text-paper/50">Místnost může mít až 8 hráčů.</span>}
+              <span className="text-[11px] font-semibold tracking-normal text-paper/50">Hádej kdo je určen pro 2 až 8 hráčů.</span>
             </div>
             <label className="grid gap-1 text-xs font-bold tracking-[0.2em] text-neon">
               VLASTNÍ KÓD (NEPOVINNÉ)
