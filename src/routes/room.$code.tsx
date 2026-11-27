@@ -13,6 +13,7 @@ import {
   type OnlineRoom, type OnlineGameState, type PlayerSession, OnlineGameError,
 } from "@/lib/online-game";
 import { Bolt } from "@/components/lobby/Bolt";
+import { setNick, useLobby } from "@/lib/lobby-store";
 import type { StockGameState } from "@/lib/games/stock-monopoly";
 
 export const Route = createFileRoute("/room/$code")({
@@ -30,13 +31,14 @@ export const Route = createFileRoute("/room/$code")({
 function RoomPage() {
   const { code } = Route.useParams();
   const navigate = useNavigate();
+  const lobby = useLobby();
   const [room,setRoom] = useState<OnlineRoom | null>(null);
   const [session,setSession] = useState<PlayerSession | null>(null);
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState("");
   const [starting,setStarting] = useState(false);
   const [invitePreview,setInvitePreview] = useState<import("@/lib/online-game").OnlineRoomSummary | null>(null);
-  const [joinName,setJoinName] = useState("");
+  const [joinName,setJoinName] = useState(lobby.nick);
   const [joining,setJoining] = useState(false);
 
   const refresh = useCallback(async()=>{
@@ -58,6 +60,10 @@ function RoomPage() {
     } finally {setLoading(false);}
   },[code]);
 
+  useEffect(() => {
+    if (lobby.nick) setJoinName((current) => current || lobby.nick);
+  }, [lobby.nick]);
+
   useEffect(()=>{
     void refresh();
     const id=window.setInterval(()=>{
@@ -75,6 +81,7 @@ function RoomPage() {
   const joinFromInvite=async()=>{
     const name=joinName.trim().slice(0,18);
     if(!name) { setError("Zadej přezdívku."); return; }
+    setNick(name);
     setJoining(true); setError("");
     try { await joinOnlineRoom(code,name); await refresh(); }
     catch(e) { setError(e instanceof Error?e.message:"Do místnosti se nepodařilo připojit."); }
@@ -111,7 +118,7 @@ function RoomPage() {
         </div>
         <label className="grid gap-1 text-xs font-bold tracking-[0.2em] text-neon">
           TVOJE PŘEZDÍVKA
-          <input value={joinName} onChange={e=>setJoinName(e.target.value)} maxLength={18} placeholder="Např. Chmelák"
+          <input value={joinName} onChange={e=>{setJoinName(e.target.value);setNick(e.target.value);}} maxLength={18} placeholder="Např. Chmelák"
             className="border border-paper/20 bg-ink px-3 py-3 text-base font-semibold tracking-normal text-paper focus:border-neon focus:outline-none"/>
         </label>
         {error&&<p className="text-center text-sm font-semibold text-pink">{error}</p>}
