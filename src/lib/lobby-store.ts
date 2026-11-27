@@ -148,52 +148,71 @@ export function quickPlay(game: GameId): string {
 
 export function addBot(_code: string) { /* Bots are disabled in the clean lobby. */ }
 
+function emptyGuessWhoState() {
+  return { secrets: {} as Record<string, number>, questions: {} as Record<string, Array<{ id: string; asker: string; text: string; yes?: boolean; answered: boolean }>>, guesses: [] as Array<{ id: string; asker: string; target: string; characterId: number; correct?: boolean; answered: boolean }> };
+}
+
 export function setGuessWhoSecret(code: string, player: string, characterId: number) {
   update((s) => ({
     ...s,
-    rooms: s.rooms.map((r) => r.code === code ? {
-      ...r,
-      gameState: {
-        secrets: { ...(r.gameState?.secrets ?? {}), [player]: characterId },
-        questions: r.gameState?.questions ?? {},
-        guesses: r.gameState?.guesses ?? {},
-      },
-    } : r),
+    rooms: s.rooms.map((r) => {
+      if (r.code !== code || r.status !== "playing" || !r.players.includes(player)) return r;
+      const old = r.gameState ?? emptyGuessWhoState();
+      return { ...r, gameState: { ...old, secrets: { ...old.secrets, [player]: characterId } } };
+    }),
   }));
 }
 
-export function addGuessWhoQuestion(code: string, targetPlayer: string, text: string, yes: boolean) {
-  update((s) => ({
-    ...s,
-    rooms: s.rooms.map((r) => r.code === code ? {
-      ...r,
-      gameState: {
-        secrets: r.gameState?.secrets ?? {},
-        questions: {
-          ...(r.gameState?.questions ?? {}),
-          [targetPlayer]: [...(r.gameState?.questions?.[targetPlayer] ?? []), { text, yes }],
-        },
-        guesses: r.gameState?.guesses ?? {},
-      },
-    } : r),
-  }));
-}
-
-export function addGuessWhoGuess(code: string, player: string, characterId: number) {
+export function addGuessWhoQuestion(code: string, asker: string, target: string, questionId: string, text: string) {
   update((s) => ({
     ...s,
     rooms: s.rooms.map((r) => {
-      if (r.code !== code) return r;
-      const secret = r.gameState?.secrets?.[player];
-      const guess = { player, characterId, correct: secret === characterId };
-      return {
-        ...r,
-        gameState: {
-          secrets: r.gameState?.secrets ?? {},
-          questions: r.gameState?.questions ?? {},
-          guesses: { ...(r.gameState?.guesses ?? {}), [player]: [...(r.gameState?.guesses?.[player] ?? []), guess] },
-        },
-      };
+      if (r.code !== code || r.status !== "playing" || !r.players.includes(asker) || !r.players.includes(target) || asker === target) return r;
+      const old = r.gameState ?? emptyGuessWhoState();
+      const prior = old.questions[target] ?? [];
+      if (prior.length >= 6 || prior.some((q) => q.id === questionId && q.asker === asker)) return r;
+      const question = { id: questionId, asker, text, answered: false };
+      return { ...r, gameState: { ...old, questions: { ...old.questions, [target]: [...prior, question] } } };
+    }),
+  }));
+}
+
+export function answerGuessWhoQuestion(code: string, target: string, questionId: string, yes: boolean) {
+  update((s) => ({
+    ...s,
+    rooms: s.rooms.map((r) => {
+      if (r.code !== code || r.status !== "playing" || !r.players.includes(target)) return r;
+      const old = r.gameState ?? emptyGuessWhoState();
+      const questions = old.questions[target] ?? [];
+      if (!questions.some((q) => q.id === questionId && !q.answered)) return r;
+      return { ...r, gameState: { ...old, questions: { ...old.questions, [target]: questions.map((q) => q.id === questionId ? { ...q, yes, answered: true } : q) } } };
+    }),
+  }));
+}
+
+export function addGuessWhoGuess(code: string, asker: string, target: string, characterId: number) {
+  update((s) => ({
+    ...s,
+    rooms: s.rooms.map((r) => {
+      if (r.code !== code || r.status !== "playing" || !r.players.includes(asker) || !r.players.includes(target) || asker === target) return r;
+      const old = r.gameState ?? emptyGuessWhoState();
+      if (old.secrets[target] === undefined) return r;
+      const guess = { id: `g${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, asker, target, characterId, answered: false };
+      return { ...r, gameState: { ...old, guesses: [...old.guesses, guess] } };
+    }),
+  }));
+}
+
+export function answerGuessWhoGuess(code: string, target: string, guessId: string) {
+  update((s) => ({
+    ...s,
+    rooms: s.rooms.map((r) => {
+      if (r.code !== code || r.status !== "playing" || !r.players.includes(target)) return r;
+      const old = r.gameState ?? emptyGuessWhoState();
+      const guess = old.guesses.find((g) => g.id === guessId && g.target === target && !g.answered);
+      if (!guess) return r;
+      const correct = old.secrets[target] === guess.characterId;
+      return { ...r, gameState: { ...old, guesses: old.guesses.map((g) => g.id === guessId ? { ...g, correct, answered: true } : g) } };
     }),
   }));
 }
