@@ -5,7 +5,7 @@ import { LobbyHeader } from "@/components/lobby/LobbyHeader";
 import { GuessWhoGame } from "@/components/games/GuessWhoGame";
 import { GAMES } from "@/lib/games/catalog";
 import {
-  getOnlineRoom, getPlayerSession, startOnlineGame, leaveOnlineRoom,
+  getOnlineRoom, getPlayerSession, previewOnlineRoom, joinOnlineRoom, startOnlineGame, leaveOnlineRoom,
   chooseOnlineSecret, askOnlineQuestion, answerOnlineQuestion,
   guessOnlineCharacter, answerOnlineGuess,
   type OnlineRoom, type PlayerSession, OnlineGameError,
@@ -32,11 +32,19 @@ function RoomPage() {
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState("");
   const [starting,setStarting] = useState(false);
+  const [invitePreview,setInvitePreview] = useState<import("@/lib/online-game").OnlineRoomSummary | null>(null);
+  const [joinName,setJoinName] = useState("");
+  const [joining,setJoining] = useState(false);
 
   const refresh = useCallback(async()=>{
     const currentSession=getPlayerSession(code);
     setSession(currentSession);
-    if(!currentSession) { setLoading(false);setRoom(null);return; }
+    if(!currentSession) {
+      try { const preview=await previewOnlineRoom(code); setInvitePreview(preview); setRoom(null); setError(""); }
+      catch(e) { setInvitePreview(null); setError(e instanceof Error?e.message:"Místnost se nepodařilo najít."); }
+      finally { setLoading(false); }
+      return;
+    }
     try {
       const next=await getOnlineRoom(code,currentSession);
       setRoom(next);
@@ -59,6 +67,15 @@ function RoomPage() {
     catch(e) { setError(e instanceof Error?e.message:"Akce se nepodařila."); }
   };
 
+  const joinFromInvite=async()=>{
+    const name=joinName.trim().slice(0,18);
+    if(!name) { setError("Zadej přezdívku."); return; }
+    setJoining(true); setError("");
+    try { await joinOnlineRoom(code,name); await refresh(); }
+    catch(e) { setError(e instanceof Error?e.message:"Do místnosti se nepodařilo připojit."); }
+    finally { setJoining(false); }
+  };
+
   const leave=async()=>{
     if(session) { try { await leaveOnlineRoom(code,session); } catch { /* continue */ } }
     void navigate({to:"/"});
@@ -79,10 +96,30 @@ function RoomPage() {
   if(loading) {
     body=<p className="animate-pulse py-24 text-center font-display text-4xl text-neon">NAČÍTÁM ARÉNU…</p>;
   } else if(!session) {
-    body=(
+    body=invitePreview ? (
+      <div className="mx-auto grid max-w-xl gap-5 border-2 border-neon bg-noir p-6 sm:p-8">
+        <div className="text-center">
+          <p className="text-xs font-bold tracking-[0.3em] text-neon">POZVÁNKA DO ONLINE ARÉNY</p>
+          <h2 className="mt-2 font-display text-5xl">HÁDEJ <span className="text-pink">KDO?</span></h2>
+          <p className="mt-2 text-paper/70">Místnost #{invitePreview.code} · {invitePreview.players.length}/{invitePreview.max} hráčů</p>
+          <p className="mt-1 text-sm text-paper/50">{invitePreview.players.map(p=>p.name).join(" · ")}</p>
+        </div>
+        <label className="grid gap-1 text-xs font-bold tracking-[0.2em] text-neon">
+          TVOJE PŘEZDÍVKA
+          <input value={joinName} onChange={e=>setJoinName(e.target.value)} maxLength={18} placeholder="Např. Chmelák"
+            className="border border-paper/20 bg-ink px-3 py-3 text-base font-semibold tracking-normal text-paper focus:border-neon focus:outline-none"/>
+        </label>
+        {error&&<p className="text-center text-sm font-semibold text-pink">{error}</p>}
+        <button type="button" disabled={joining||invitePreview.players.length>=invitePreview.max} onClick={()=>void joinFromInvite()}
+          className="cut-btn glow-neon border-2 border-neon bg-neon/10 py-3 font-display text-3xl text-neon hover:bg-neon hover:text-ink disabled:opacity-40">
+          {joining?"PŘIPOJUJI…":invitePreview.players.length>=invitePreview.max?"MÍSTNOST JE PLNÁ":"VSTOUPIT DO HRY"}
+        </button>
+        <Link to="/" className="text-center text-sm text-paper/50 hover:text-neon">Zpět do lobby</Link>
+      </div>
+    ) : (
       <div className="mx-auto grid max-w-md gap-4 py-16 text-center">
-        <p className="comic-shadow mx-auto rotate-[-4deg] rounded-[28px] bg-paper px-6 py-3 font-display text-4xl text-ink">NEJSI V MÍSTNOSTI</p>
-        <p className="text-paper/70">Pro vstup do arény se vrať do lobby a připoj se kódem nebo seznamem místností.</p>
+        <p className="comic-shadow mx-auto rotate-[-4deg] rounded-[28px] bg-paper px-6 py-3 font-display text-4xl text-ink">ARÉNA NENALEZENA</p>
+        <p className="text-paper/70">{error || "Místnost nebyla nalezena nebo už vypršela."}</p>
         <Link to="/" className="cut-btn mx-auto bg-neon px-8 py-2 font-display text-2xl text-ink">ZPĚT DO LOBBY</Link>
       </div>
     );
