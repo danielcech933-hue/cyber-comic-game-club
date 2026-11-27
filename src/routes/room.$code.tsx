@@ -27,6 +27,7 @@ function RoomPage() {
   const me = lobby.nick;
   const inRoom = !!room && room.players.includes(me);
   const [joinErr, setJoinErr] = useState("");
+  const game = room ? GAMES[room.game] : null;
 
   let body: React.ReactNode;
   if (!lobby.ready) {
@@ -78,8 +79,9 @@ function RoomPage() {
         </div>
         <div className="flex flex-col gap-4">
           <div className="grid gap-3 border-2 border-paper/15 bg-noir p-4">
-            <p className="font-display text-2xl tracking-wide">KÓD ARÉNY</p>
+            <p className="font-display text-2xl tracking-wide">POZVÁNKA DO HRY</p>
             <p className="font-display text-6xl tracking-[0.2em] text-neon">{room.code}</p>
+            <p className="text-xs text-paper/50">Pošli kód nebo odkaz kamarádům</p>
             <button type="button" onClick={() => {
               void navigator.clipboard?.writeText(`${window.location.origin}/room/${room.code}`).then(() => toast.success("Odkaz zkopírován"), () => toast.error("Kopírování selhalo"));
             }} className="rounded-full border border-paper/25 px-4 py-2 text-sm font-semibold hover:border-neon hover:text-neon">Zkopírovat pozvánku</button>
@@ -87,7 +89,7 @@ function RoomPage() {
           </div>
           <button type="button" disabled={!canStart} onClick={() => setRoomStatus(room.code, "playing")}
             className="cut-btn glow-neon flex h-20 items-center justify-center gap-3 border-2 border-neon bg-neon/10 font-display text-4xl tracking-wider text-neon hover:bg-neon hover:text-ink disabled:opacity-40 disabled:hover:bg-neon/10 disabled:hover:text-neon">
-            <Bolt size={20} />SPUSTIT HRU
+            <Bolt size={20} />OTEVŘÍT MÍSTNOST
           </button>
         </div>
       </div>
@@ -97,11 +99,11 @@ function RoomPage() {
       <div className="mx-auto grid max-w-3xl gap-5 border-2 border-pink bg-noir p-6 text-center sm:p-10">
         <p className="text-xs font-bold tracking-[0.3em] text-pink">ARÉNA #{room.code}</p>
         <h2 className="font-display text-5xl sm:text-6xl">NOVÝ <span className="text-neon">GAME CLUB</span></h2>
-        <p className="text-paper/70">Místnost je připravená. Původní hry jsme odstranili a nové herní režimy doplníme samostatně.</p>
+        <p className="text-paper/70">Místnost je připravená. Původní hry jsou pryč — sem později přidáme nové herní režimy.</p>
         <button type="button" onClick={() => { leaveRoom(room.code); void navigate({ to: "/" }); }} className="cut-btn mx-auto border-2 border-pink px-6 py-2 font-display text-xl text-pink hover:bg-pink hover:text-ink">ZPĚT DO LOBBY</button>
       </div>
     );
-
+  }
 
   return (
     <div className="flex min-h-dvh flex-col gap-5 bg-ink p-3 sm:p-6">
