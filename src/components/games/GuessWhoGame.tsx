@@ -176,7 +176,8 @@ export function GuessWhoGame({ players, me, gameState, onChooseSecret, onAskQues
             <div key={guess.id} className="grid gap-2 rounded-lg border border-paper/15 bg-ink p-3">
               <p className="text-sm text-paper/60">{guess.asker} tipuje:</p>
               <p className="font-display text-2xl">{CHARACTERS[guess.characterId]?.name}</p>
-              <button type="button" onClick={() => onAnswerGuess(guess.id)} className="cut-btn bg-pink py-2 font-display text-xl text-ink">POTVRDIT TIP A ODHALIT VÝSLEDEK</button>
+              <p className="text-xs text-paper/50">Tajná postava je {mySecret?.name}.</p>
+              <button type="button" onClick={() => onAnswerGuess(guess.id)} className="cut-btn bg-pink py-2 font-display text-xl text-ink">ODHALIT, ZDA JE TIP SPRÁVNÝ</button>
             </div>
           ))}
         </div>
